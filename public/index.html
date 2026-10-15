@@ -16,14 +16,31 @@
     --gold:#d8ab52;--gold-soft:rgba(216,171,82,.15);
     --good:#32c08a;--warn:#e7b24a;--crit:#e5674f;--crit-soft:rgba(229,103,79,.14);
     --radius:16px;--radius-sm:11px;--shadow:0 18px 40px -22px rgba(0,0,0,.8);
+    --page-grad:radial-gradient(1200px 520px at 82% -8%,rgba(22,104,227,.18),transparent 60%),radial-gradient(900px 440px at 4% 2%,rgba(216,171,82,.07),transparent 55%);
     --font-display:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;
     --font-body:"Manrope",-apple-system,system-ui,sans-serif;
     --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
     color-scheme:dark;
   }
+  :root[data-theme="light"]{
+    --bg:#eaeff7;--bg-2:#ffffff;--surface:#ffffff;--surface-2:#f2f6fc;--surface-3:#e5ebf5;
+    --line:rgba(24,46,78,.12);--line-strong:rgba(24,46,78,.22);
+    --fg:#0d1f36;--muted:#53688a;--muted-2:#7d90ab;
+    --accent:#1668e3;--accent-bright:#1457c0;--accent-soft:rgba(22,104,227,.12);
+    --gold:#a67c2e;--gold-soft:rgba(176,132,47,.16);
+    --good:#1a9c6b;--warn:#b9811a;--crit:#cf4a34;--crit-soft:rgba(207,74,52,.12);
+    --shadow:0 16px 34px -20px rgba(24,46,78,.4);
+    --page-grad:radial-gradient(1200px 520px at 82% -8%,rgba(22,104,227,.10),transparent 60%),radial-gradient(900px 440px at 4% 2%,rgba(176,132,47,.07),transparent 55%);
+    color-scheme:light;
+  }
+  /* a few spots use literal light-on-dark colors — fix them for the light theme */
+  :root[data-theme="light"] .pill.recur{color:#4b45b0}
+  :root[data-theme="light"] .shift-chip.night{color:#4b45b0;background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.3)}
+  :root[data-theme="light"] .pill.p-high,:root[data-theme="light"] .pill.due.overdue{color:#c0392b}
+  :root[data-theme="light"] .focus{border:1px solid var(--line-strong)}
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;background:radial-gradient(1200px 520px at 82% -8%,rgba(22,104,227,.18),transparent 60%),radial-gradient(900px 440px at 4% 2%,rgba(216,171,82,.07),transparent 55%),var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body{margin:0;background:var(--page-grad),var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   button{font-family:inherit;color:inherit;cursor:pointer}
   input,textarea,select{font-family:inherit}
   h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
@@ -55,6 +72,9 @@
   .presets button{border:none;background:transparent;color:#5a6b82;font-weight:700;font-size:13px;padding:6px 8px;border-radius:8px;font-variant-numeric:tabular-nums}
   .presets button.on{background:var(--accent);color:#fff}
   .presets .unit{align-self:center;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8294ab}
+  #themeToggle{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:16px;display:grid;place-items:center;transition:border-color .15s,transform .1s}
+  #themeToggle:hover{border-color:var(--line-strong)}
+  #themeToggle:active{transform:scale(.92)}
   .profbtn{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 14px 5px 6px;transition:border-color .15s}
   .profbtn:hover{border-color:var(--line-strong)}
   .profbtn .av{width:34px;height:34px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:15px;letter-spacing:-2px}
@@ -324,6 +344,7 @@
           <span class="unit">min</span>
         </div>
       </div>
+      <button id="themeToggle" title="Switch theme" aria-label="Switch light or dark theme">☀️</button>
       <button class="profbtn" id="profBtn" aria-label="Open your profile">
         <span class="av" id="profAv">🧹</span>
         <span><span class="pn" id="profName">You</span><span class="ps" id="profStreakWrap"><span id="profStreak">0</span>-day streak 🔥</span></span>
@@ -353,6 +374,16 @@
   const $ = s => document.querySelector(s);
   const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const fmt = s => String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+
+  /* ---------- theme (dark / light) ---------- */
+  let theme="dark"; try{ const s=localStorage.getItem("hcb-theme"); if(s==="light"||s==="dark") theme=s; }catch(e){}
+  function applyTheme(t){
+    const root=document.documentElement;
+    if(t==="light") root.setAttribute("data-theme","light"); else root.removeAttribute("data-theme");
+    const b=$("#themeToggle"); if(b) b.textContent=(t==="light")?"🌙":"☀️";
+  }
+  applyTheme(theme);
+  (function wireTheme(){ const b=$("#themeToggle"); if(b) b.onclick=()=>{ theme=(theme==="light")?"dark":"light"; try{localStorage.setItem("hcb-theme",theme);}catch(e){} applyTheme(theme); }; })();
 
   /* ---------- api ---------- */
   async function api(method, url, body){

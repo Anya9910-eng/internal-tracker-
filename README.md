@@ -40,6 +40,9 @@ plus SQLite — no external services, no API keys.
   hospitality-themed badges: First check-in, On a roll, Housekeeping hero, Diamond status,
   Deep clean, Spotless, Early check-in, Night auditor, Week on fire.
 
+- **Dark & light themes** — a toggle in the top bar (☀️ / 🌙); your choice is
+  remembered per device. Dark is the default.
+
 ## Run it
 
 Requires **Node.js 18+**.
