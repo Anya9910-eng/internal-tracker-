@@ -1,0 +1,19 @@
+{
+  "name": "hilton-crew-board",
+  "version": "1.0.0",
+  "description": "Gamified internal team tracker for Hilton crews — multi-user, self-hosted (Node + SQLite).",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2"
+  }
+}
