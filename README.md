@@ -16,7 +16,9 @@ plus SQLite — no external services, no API keys.
 - **Real accounts** — email + password sign-up and login, hashed passwords (scrypt),
   secure session cookies.
 - **One shared board** — columns, tasks, the goal, and everyone's profile live in the
-  database and are shared by the whole crew.
+  database and are shared by the whole crew. **Drag cards between lists** or reorder
+  within a list; in the Recurring view, dragging to another cadence column changes
+  how often a task repeats.
 - **Assignees are real people** — the assignee dropdown is the list of people who've
   actually signed up. That's how the board knows who's on the team.
 - **Live sync** — changes broadcast over Server-Sent Events, so everyone's board updates
