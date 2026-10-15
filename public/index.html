@@ -152,6 +152,15 @@
   .dustbunny .eye1{left:calc(30% + 1px)}.dustbunny .eye2{left:calc(55% + 1px)}
   .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
   .dust-count b{color:var(--fg)}
+  /* Mascot — Sweepy the duck (own on-top layer, pinned to the bottom edge) */
+  .mascot{position:fixed;left:0;bottom:calc(6px + env(safe-area-inset-bottom,0px));width:92px;height:72px;z-index:6;pointer-events:none;will-change:transform}
+  .mascot .duck-flip{width:100%;height:100%}
+  .mascot.flip .duck-flip{transform:scaleX(-1)}
+  .mascot .duck{width:100%;height:100%;display:block;transform-origin:center bottom;animation:waddle .6s ease-in-out infinite}
+  @keyframes waddle{0%,100%{transform:rotate(-2.5deg) translateY(0)}50%{transform:rotate(2.5deg) translateY(-2px)}}
+  .mascot .say{position:absolute;bottom:64px;left:50%;transform:translateX(-50%) translateY(4px) scale(.85);transform-origin:bottom center;background:#fff;color:#0c1d31;font-weight:700;font-size:11px;padding:5px 11px;border-radius:12px;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;box-shadow:0 8px 18px -8px rgba(0,0,0,.6)}
+  .mascot .say::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
+  .mascot .say.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 
   /* overlays */
   .scrim{position:fixed;inset:0;background:rgba(4,10,18,.72);backdrop-filter:blur(3px);z-index:40;display:grid;place-items:start center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) 16px 40px}
@@ -536,6 +545,7 @@
     const t=findTask(id); if(!t) return;
     try{
       const r=await api("POST","/api/tasks/"+id+"/toggle");
+      if(r.done) mascotSay(SWEEP_LINES[Math.floor(Math.random()*SWEEP_LINES.length)]);
       if(r.unlocked&&r.unlocked.length) toast(`🏅 Achievement: ${r.unlocked[0].name}`);
       await loadBoard();
     }catch(err){ if(err.status===401) showAuth(); else toast("⚠️ "+err.message); }
@@ -735,7 +745,7 @@
       b.style.opacity=0.55+Math.random()*0.4; dustLayer.appendChild(b); bunnies.push(b); }
     while(bunnies.length>want){ const b=bunnies.pop(); b.remove(); }
   }
-  function startDust(){ if(dustRAF) return; t0=performance.now(); dustRAF=requestAnimationFrame(animDust); }
+  function startDust(){ if(dustRAF) return; buildMascot(); t0=performance.now(); dustRAF=requestAnimationFrame(animDust); }
   function animDust(now){
     const w=window.innerWidth||800, dt=Math.min(50,now-t0); t0=now;
     for(const b of bunnies){
@@ -744,8 +754,56 @@
       const ph=parseFloat(b.dataset.ph)+dt*0.003; b.dataset.ph=ph;
       b.style.transform=`translate(${x/100*w}px, ${Math.sin(ph)*7}px) scale(${b.dataset.sc})`;
     }
+    updateMascot(dt, w);
     dustRAF=requestAnimationFrame(animDust);
   }
+
+  /* ---------- Sweepy the duck (mascot) ---------- */
+  const DUCK_SVG=`<div class="say"></div><div class="duck-flip"><svg class="duck" viewBox="0 0 92 72" xmlns="http://www.w3.org/2000/svg">
+    <line x1="36" y1="55" x2="33" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
+    <line x1="46" y1="55" x2="49" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
+    <path d="M20 37 L7 32 L19 47 Z" fill="#FFD54A"/>
+    <ellipse cx="40" cy="42" rx="23" ry="16" fill="#FFD54A"/>
+    <ellipse cx="37" cy="45" rx="12" ry="8" fill="#F2C236"/>
+    <circle cx="62" cy="26" r="12.5" fill="#FFD54A"/>
+    <path d="M72 22.5 L86 27 L72 31.5 Z" fill="#F7941D"/>
+    <circle cx="65" cy="23" r="2.6" fill="#15293f"/><circle cx="66" cy="22.1" r="0.9" fill="#fff"/>
+    <g class="broom">
+      <line x1="58" y1="40" x2="81" y2="63" stroke="#9c6b3f" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M74 60 L88 60 L85 71 L77 71 Z" fill="#E7B24A"/>
+      <line x1="79" y1="61.5" x2="79" y2="70" stroke="#b98a30" stroke-width="1"/>
+      <line x1="83" y1="61.5" x2="83" y2="70" stroke="#b98a30" stroke-width="1"/>
+      <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 58 40;15 58 40;-9 58 40" dur="1.2s" repeatCount="indefinite"/>
+    </g>
+  </svg></div>`;
+  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false;
+  function buildMascot(){
+    if(mascotEl) return;
+    mascotEl=document.createElement("div");
+    mascotEl.id="mascot"; mascotEl.className="mascot"; mascotEl.setAttribute("aria-hidden","true");
+    mascotEl.innerHTML=DUCK_SVG;
+    document.body.appendChild(mascotEl);
+  }
+  function updateMascot(dt,w){
+    if(!mascotEl) return;
+    const duckW=92, maxX=Math.max(14,(w||window.innerWidth||800)-duckW-8);
+    const clean=openDustTotal()===0;
+    const speed=clean?0.015:0.04;           // slows down when there's nothing to sweep
+    mascotX += mascotDir*dt*speed;
+    if(mascotX>maxX){ mascotX=maxX; mascotDir=-1; }
+    if(mascotX<14){ mascotX=14; mascotDir=1; }
+    mascotEl.style.transform=`translateX(${mascotX}px)`;
+    mascotEl.classList.toggle("flip", mascotDir<0);
+    if(clean && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
+    if(!clean) idleSaid=false;
+  }
+  let sayT=null;
+  function mascotSay(text){
+    const s=mascotEl&&mascotEl.querySelector(".say"); if(!s) return;
+    s.textContent=text; s.classList.add("show");
+    clearTimeout(sayT); sayT=setTimeout(()=>s.classList.remove("show"),2200);
+  }
+  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Quack-tastic!","Tidy!","On a roll!"];
 
   /* ---------- overlays + toast ---------- */
   const scrim=$("#scrim");
