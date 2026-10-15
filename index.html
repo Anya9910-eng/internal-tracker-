@@ -1,0 +1,963 @@
+<title>Hilton Crew Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Gamified internal team tracker for Hilton crews — world clocks, a shared focus timer, a goal timeline, and a kanban board with streaks and achievements.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+
+<style>
+  /* Layout: fixed command bar (clocks + focus timer) → goal timeline → horizontal kanban → ambient dust layer; overlays for profile, task and goal editors. */
+  :root{
+    --bg:#081423;            /* Hilton navy, deepened */
+    --bg-2:#0c1d31;
+    --surface:#11263f;
+    --surface-2:#17304e;
+    --surface-3:#1f3c5e;
+    --line:rgba(140,174,214,.16);
+    --line-strong:rgba(140,174,214,.32);
+    --fg:#eaf1fb;
+    --muted:#92a9c9;
+    --muted-2:#6d86a6;
+    --accent:#1668e3;        /* Hilton blue */
+    --accent-bright:#3b8bff;
+    --accent-soft:rgba(22,104,227,.16);
+    --gold:#d8ab52;          /* Hilton Honors gold */
+    --gold-soft:rgba(216,171,82,.15);
+    --good:#32c08a;
+    --warn:#e7b24a;
+    --crit:#e5674f;
+    --crit-soft:rgba(229,103,79,.14);
+    --radius:16px;
+    --radius-sm:11px;
+    --shadow:0 18px 40px -22px rgba(0,0,0,.8);
+    --font-display:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;
+    --font-body:"Manrope",-apple-system,system-ui,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 520px at 82% -8%, rgba(22,104,227,.18), transparent 60%),
+      radial-gradient(900px 440px at 4% 2%, rgba(216,171,82,.07), transparent 55%),
+      var(--bg);
+    color:var(--fg);
+    font-family:var(--font-body);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  button{font-family:inherit;color:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit}
+  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+  ::selection{background:rgba(59,139,255,.35)}
+
+  .wrap{
+    max-width:1320px;margin:0 auto;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:18px 160px;
+    position:relative;z-index:2;
+  }
+
+  /* ---------- Command bar ---------- */
+  .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .brand .mark{
+    width:40px;height:40px;border-radius:11px;display:grid;place-items:center;
+    background:linear-gradient(150deg,var(--accent-bright),var(--accent));
+    font-family:var(--font-display);font-weight:800;font-size:20px;color:#fff;
+    box-shadow:0 6px 18px -6px rgba(22,104,227,.75);
+  }
+  .brand b{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-.02em;display:block;line-height:1.1}
+  .brand span{color:var(--muted);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
+
+  .clocks{display:flex;gap:10px;flex-wrap:wrap}
+  .clock{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:7px 13px;min-width:112px;
+  }
+  .clock .city{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);display:flex;justify-content:space-between;gap:8px}
+  .clock .city em{font-style:normal;color:var(--accent-bright)}
+  .clock .time{font-family:var(--font-mono);font-weight:700;font-size:21px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin-top:2px}
+  .clock .time small{font-size:12px;color:var(--muted);font-weight:500}
+
+  .focus{
+    display:flex;align-items:center;gap:12px;
+    background:linear-gradient(130deg,#f4f6fb,#e7ebf3);
+    border-radius:999px;padding:7px 10px 7px 18px;color:#0c1d31;
+    box-shadow:var(--shadow);
+  }
+  .focus .lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#5a6b82;font-weight:700}
+  .focus .fdisp{font-family:var(--font-mono);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:76px;text-align:center}
+  .focus .fdisp.run{color:var(--accent)}
+  .iconbtn{
+    width:42px;height:42px;border-radius:50%;border:none;display:grid;place-items:center;
+    background:var(--accent);color:#fff;font-size:17px;transition:transform .12s,background .15s;
+  }
+  .iconbtn:hover{transform:scale(1.06)}
+  .iconbtn.ghost{background:#0c1d31}
+  .iconbtn:active{transform:scale(.95)}
+  .presets{display:flex;gap:4px}
+  .presets button{
+    border:none;background:transparent;color:#5a6b82;font-weight:700;font-size:13px;
+    padding:6px 8px;border-radius:8px;font-variant-numeric:tabular-nums;
+  }
+  .presets button.on{background:var(--accent);color:#fff}
+  .presets .unit{align-self:center;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8294ab}
+
+  .profbtn{
+    display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);
+    border-radius:999px;padding:5px 14px 5px 6px;transition:border-color .15s;
+  }
+  .profbtn:hover{border-color:var(--line-strong)}
+  .profbtn .av{width:34px;height:34px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:15px;letter-spacing:-2px}
+  .profbtn .pn{font-weight:700;font-size:13px;line-height:1.15}
+  .profbtn .ps{font-size:11px;color:var(--gold);display:flex;align-items:center;gap:3px}
+
+  /* ---------- Goal panel ---------- */
+  .goal{
+    background:linear-gradient(135deg,var(--surface),var(--bg-2));
+    border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px;
+  }
+  .goal-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .goal-head h2{font-size:16px}
+  .eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-bright);font-weight:700}
+  .goal-empty p{color:var(--muted);max-width:60ch;margin:6px 0 14px}
+
+  .btn{
+    border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;
+    background:var(--accent);color:#fff;transition:filter .15s,transform .1s;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn.sm{padding:7px 12px;font-size:12px}
+  .btn.ghost{background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),#c3923a);color:#2a1e06}
+  .btn.danger{background:transparent;border:1px solid var(--crit);color:var(--crit)}
+  .btn.danger:hover{background:var(--crit-soft)}
+
+  .goal-live .gtitle{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .goal-live .gtitle h2{font-size:20px}
+  .goal-live .gtitle .meta{color:var(--muted);font-size:12.5px;margin-left:auto}
+  .goal-live .gtitle .meta b{color:var(--fg)}
+  .track{position:relative;height:72px;margin:8px 4px 10px}
+  .track .rail{position:absolute;left:0;right:0;top:46px;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+  .track .rail i{position:absolute;inset:0;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-bright));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .track .runner{
+    position:absolute;top:18px;transform:translateX(-50%);transition:left .6s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column;align-items:center;gap:3px;z-index:3;
+  }
+  .track .runner .bub{width:40px;height:40px;border-radius:50%;background:#fff;color:#0c1d31;display:grid;place-items:center;font-size:19px;box-shadow:0 6px 16px -4px rgba(0,0,0,.6);border:2px solid var(--accent-bright)}
+  .track .runner .cap{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .track .finish{position:absolute;right:-6px;top:30px;font-size:26px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+  .track .chest{position:absolute;top:34px;transform:translateX(-50%);font-size:22px;transition:transform .2s;filter:grayscale(.7) brightness(.8)}
+  .track .chest.open{filter:none;transform:translateX(-50%) scale(1.15)}
+  .track .dates{position:absolute;left:0;right:0;top:60px;display:flex;justify-content:space-between;color:var(--muted-2);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .rewards{display:flex;gap:8px;flex-wrap:wrap}
+  .reward{
+    display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:999px;padding:6px 13px;font-size:12.5px;
+  }
+  .reward.open{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
+  .reward .pct{font-weight:700;font-variant-numeric:tabular-nums}
+  .goal-live .gedit{margin-left:10px}
+
+  /* ---------- Board ---------- */
+  .board-head{display:flex;align-items:center;gap:10px;margin:4px 2px 12px}
+  .board-head h2{font-size:15px}
+  .board-head .hint{color:var(--muted-2);font-size:11.5px;margin-left:auto}
+  .board{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 18px;scroll-snap-type:x proximity}
+  .board::-webkit-scrollbar{height:9px}
+  .board::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:9px}
+  .col{
+    flex:0 0 286px;scroll-snap-align:start;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:9px;align-self:flex-start;max-height:70vh;
+  }
+  .col-head{display:flex;align-items:center;gap:6px}
+  .col-head input{
+    flex:1;min-width:0;background:transparent;border:none;color:var(--fg);font-family:var(--font-display);
+    font-weight:700;font-size:14.5px;padding:3px 2px;border-radius:6px;
+  }
+  .col-head input:focus{outline:none;background:var(--surface-2)}
+  .col-count{font-size:11px;color:var(--muted-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .col-head .mini{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-size:13px;display:grid;place-items:center}
+  .col-head .mini:hover{background:var(--surface-2);color:var(--fg)}
+  .cards{display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding:2px 2px 2px 0}
+  .card{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:11px;display:flex;flex-direction:column;gap:9px;transition:border-color .15s,transform .1s;
+  }
+  .card:hover{border-color:var(--line-strong)}
+  .card.done{opacity:.55}
+  .card-top{display:flex;gap:9px;align-items:flex-start}
+  .chk{
+    flex:0 0 auto;width:22px;height:22px;border-radius:7px;border:2px solid var(--line-strong);
+    background:transparent;display:grid;place-items:center;font-size:13px;color:#fff;margin-top:1px;transition:background .15s,border-color .15s;
+  }
+  .chk.on{background:var(--good);border-color:var(--good)}
+  .card .ttl{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.35;cursor:pointer;word-break:break-word}
+  .card.done .ttl{text-decoration:line-through;text-decoration-color:var(--muted-2)}
+  .card .tags{display:flex;gap:5px;flex-wrap:wrap}
+  .pill{font-size:10px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:999px;background:var(--surface-3);color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+  .pill.p-high{background:var(--crit-soft);color:#ff8f78}
+  .pill.p-med{background:var(--gold-soft);color:var(--gold)}
+  .pill.p-low{background:rgba(50,192,138,.14);color:var(--good)}
+  .pill.who{background:var(--accent-soft);color:var(--accent-bright)}
+  .pill.link{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .dust-ctl{display:flex;align-items:center;gap:7px;margin-left:auto}
+  .dust-ctl button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:15px;line-height:1;display:grid;place-items:center}
+  .dust-ctl button:hover{border-color:var(--line-strong)}
+  .dust-ctl .n{font-weight:700;font-variant-numeric:tabular-nums;min-width:30px;text-align:center;display:flex;align-items:center;gap:3px;justify-content:center}
+  .addtask,.addcol{
+    border:1px dashed var(--line-strong);background:transparent;color:var(--muted);border-radius:var(--radius-sm);
+    padding:10px;font-weight:600;font-size:13px;text-align:left;transition:color .15s,border-color .15s;
+  }
+  .addtask:hover,.addcol:hover{color:var(--fg);border-color:var(--accent)}
+  .addcol{flex:0 0 200px;align-self:flex-start;text-align:center;padding:16px}
+
+  /* ---------- Dust layer ---------- */
+  .dust-layer{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;z-index:1;overflow:hidden}
+  .dustbunny{position:absolute;bottom:14px;width:30px;height:24px;will-change:transform}
+  .dustbunny .body{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 38% 34%,#5a6b82,#33465f 70%);box-shadow:inset -2px -3px 4px rgba(0,0,0,.4)}
+  .dustbunny .body::before,.dustbunny .body::after{content:"";position:absolute;top:34%;width:5px;height:5px;border-radius:50%;background:#eaf1fb}
+  .dustbunny .body::before{left:30%}
+  .dustbunny .body::after{left:55%}
+  .dustbunny .eye1,.dustbunny .eye2{position:absolute;top:calc(34% + 1.5px);width:2.5px;height:2.5px;border-radius:50%;background:#081423}
+  .dustbunny .eye1{left:calc(30% + 1px)}
+  .dustbunny .eye2{left:calc(55% + 1px)}
+  .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
+  .dust-count b{color:var(--fg)}
+
+  /* ---------- Overlays ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(4,10,18,.72);backdrop-filter:blur(3px);z-index:40;display:grid;place-items:start center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) 16px 40px}
+  .sheet{
+    width:100%;max-width:520px;background:var(--surface);border:1px solid var(--line-strong);border-radius:20px;
+    box-shadow:var(--shadow);margin-top:24px;overflow:hidden;
+  }
+  .sheet.wide{max-width:600px}
+  .sheet-head{display:flex;align-items:center;gap:10px;padding:18px 20px 12px}
+  .sheet-head h2{font-size:18px;flex:1}
+  .sheet-body{padding:4px 20px 20px;display:flex;flex-direction:column;gap:16px}
+  .x{width:32px;height:32px;border-radius:9px;border:none;background:var(--surface-2);color:var(--muted);font-size:16px;display:grid;place-items:center}
+  .x:hover{color:var(--fg)}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field>label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .in{
+    background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font-size:14px;width:100%;
+  }
+  .in:focus{outline:none;border-color:var(--accent)}
+  textarea.in{resize:vertical;min-height:62px;line-height:1.5}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{border:1px solid var(--line);background:var(--bg-2);color:var(--muted);border-radius:9px;padding:8px 13px;font-weight:600;font-size:12.5px}
+  .seg button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}
+  .dustbox,.timerbox{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .dustbox .hd,.timerbox .hd{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .dustrow{display:flex;align-items:center;gap:10px}
+  .dustrow .big{font-family:var(--font-mono);font-weight:700;font-size:24px;font-variant-numeric:tabular-nums;min-width:42px;text-align:center}
+  .dustrow button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:20px;line-height:1}
+  .dustbox p,.timerbox p{color:var(--muted-2);font-size:11.5px;margin:9px 0 0;line-height:1.45}
+  .tdisp{font-family:var(--font-mono);font-weight:700;font-size:32px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .tdisp.run{color:var(--accent-bright)}
+  .tctl{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .tctl .in{flex:1;min-width:80px}
+
+  /* ---------- Profile ---------- */
+  .streakbars{display:flex;gap:5px;flex-wrap:wrap}
+  .sb{width:30px;height:16px;border-radius:5px;background:var(--surface-3)}
+  .sb.on{background:linear-gradient(135deg,var(--gold),#c3923a)}
+  .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:7px}
+  .emoji-grid button{aspect-ratio:1;border:1px solid var(--line);background:var(--bg-2);border-radius:10px;font-size:19px;display:grid;place-items:center;transition:border-color .12s}
+  .emoji-grid button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+  .chkline{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px}
+  .chkline .box{flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:2px solid var(--line-strong);display:grid;place-items:center;font-size:12px;color:#fff;margin-top:1px}
+  .chkline .box.on{background:var(--accent);border-color:var(--accent)}
+  .chkline small{color:var(--muted-2);display:block;font-size:11.5px}
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
+  .ach{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:3px;opacity:.5;transition:opacity .2s}
+  .ach.on{opacity:1;border-color:var(--gold);background:linear-gradient(145deg,var(--gold-soft),transparent)}
+  .ach .ic{font-size:22px}
+  .ach .an{font-weight:700;font-size:12.5px}
+  .ach .ad{font-size:10.5px;color:var(--muted-2);line-height:1.35}
+  .ach.on .an{color:var(--gold)}
+  .section-cap{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:4px}
+
+  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(140%);z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:640px){
+    .focus{order:5;width:100%;justify-content:space-between}
+    .brand{width:100%}
+    .profbtn{order:4}
+    .row2{grid-template-columns:1fr}
+    .wrap{padding-block:14px 150px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms!important;transition-duration:.001ms!important}
+  }
+</style>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">H</div>
+      <div>
+        <b>Hilton Crew Board</b>
+        <span>Internal team tracker</span>
+      </div>
+    </div>
+
+    <div class="clocks" id="clocks"></div>
+
+    <div class="focus">
+      <div>
+        <div class="lbl">Focus timer</div>
+        <div class="fdisp" id="focusDisp">25:00</div>
+      </div>
+      <button class="iconbtn" id="focusToggle" title="Start / pause" aria-label="Start or pause focus timer">▶</button>
+      <button class="iconbtn ghost" id="focusReset" title="Reset" aria-label="Reset focus timer">↺</button>
+      <div class="presets" id="focusPresets">
+        <button data-min="15">15</button>
+        <button data-min="25" class="on">25</button>
+        <button data-min="50">50</button>
+        <span class="unit">min</span>
+      </div>
+    </div>
+
+    <button class="profbtn" id="profBtn" aria-label="Open your profile">
+      <span class="av" id="profAv">🧹</span>
+      <span>
+        <span class="pn" id="profName">You</span>
+        <span class="ps"><span id="profStreak">0</span>-day streak 🔥</span>
+      </span>
+    </button>
+  </header>
+
+  <section class="goal" id="goalPanel"></section>
+
+  <div class="board-head">
+    <span class="eyebrow">Shift board</span>
+    <h2>This week</h2>
+    <span class="hint">Finishing a task sweeps its dust away • scroll sideways for more lists</span>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+
+<div class="dust-layer" id="dustLayer" aria-hidden="true"></div>
+<div class="dust-count" id="dustCount"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<script>
+"use strict";
+(function(){
+  /* ---------------- storage ---------------- */
+  const KEY = "hilton-crew-board-v1";
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} };
+  const load = () => { try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch(e){ return null; } };
+
+  const uid = () => Math.random().toString(36).slice(2,9);
+  const todayKey = () => new Date().toISOString().slice(0,10);
+
+  /* ---------------- seed ---------------- */
+  function seed(){
+    const gid = uid();
+    return {
+      profile:{
+        name:"Maya R.",
+        status:"Front desk · PM shift",
+        emojis:["🧹","💎","🔑"],
+        showStreak:true,
+        paused:false,
+        streakDays:3,
+        lastClose:todayKey(),
+        stats:{ closed:7, sweptDust:41, early:true, night:false, deepClean:false }
+      },
+      focus:{ minutes:25, remaining:25*60, running:false },
+      goal:{
+        id:gid,
+        title:"Q4 Guest Satisfaction Push",
+        start:todayKey(),
+        deadline:addDays(todayKey(),28),
+        teamEmoji:"🛎️",
+        finishEmoji:"🏆",
+        rewards:[
+          {label:"Team lunch 🍱", pct:25},
+          {label:"$50 gift card each 🎁", pct:50},
+          {label:"Early off a Friday 🏖️", pct:75}
+        ]
+      },
+      team:["Maya R.","Dev P.","Noor A.","Liam T.","Sofia K."],
+      columns:[
+        { id:uid(), name:"To do", tasks:[
+          { id:uid(), title:"Prep VIP arrival — Suite 1203", done:false, dust:5, priority:"high", urgency:"Today", project:"Guest experience", assignee:"Noor A.", link:"", goalId:gid },
+          { id:uid(), title:"Restock minibars — floors 8–12", done:false, dust:8, priority:"med", urgency:"Today", project:"Housekeeping", assignee:"Liam T.", link:"", goalId:gid },
+          { id:uid(), title:"Confirm airport shuttle schedule", done:false, dust:2, priority:"low", urgency:"This week", project:"Front desk", assignee:"", link:"", goalId:"" }
+        ]},
+        { id:uid(), name:"In progress", tasks:[
+          { id:uid(), title:"Resolve AC complaint — room 907", done:false, dust:6, priority:"high", urgency:"Now", project:"Engineering", assignee:"Dev P.", link:"", goalId:gid },
+          { id:uid(), title:"Update breakfast buffet signage", done:false, dust:3, priority:"med", urgency:"This week", project:"F&B", assignee:"Sofia K.", link:"", goalId:gid }
+        ]},
+        { id:uid(), name:"Done", tasks:[
+          { id:uid(), title:"Night audit reconciliation", done:true, dust:4, priority:"med", urgency:"Done", project:"Front desk", assignee:"Maya R.", link:"", goalId:gid },
+          { id:uid(), title:"Lost & found weekly log", done:true, dust:2, priority:"low", urgency:"Done", project:"Front desk", assignee:"Maya R.", link:"", goalId:gid }
+        ]}
+      ]
+    };
+  }
+  function addDays(iso,n){ const d=new Date(iso); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+
+  let state = load() || seed();
+  // forward-compat guards
+  state.profile.stats = state.profile.stats || { closed:0, sweptDust:0, early:false, night:false, deepClean:false };
+  state.team = state.team || [];
+
+  /* ---------------- world clocks ---------------- */
+  const CITIES = [
+    { name:"McLean HQ", tz:"America/New_York" },
+    { name:"London",    tz:"Europe/London" },
+    { name:"Dubai",     tz:"Asia/Dubai" },
+    { name:"Singapore", tz:"Asia/Singapore" }
+  ];
+  function offsetLabel(tz){
+    try{
+      const parts = new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"shortOffset"}).formatToParts(new Date());
+      const o = parts.find(p=>p.type==="timeZoneName");
+      return o ? o.value.replace("GMT","UTC") : "";
+    }catch(e){ return ""; }
+  }
+  function renderClocks(){
+    const host = document.getElementById("clocks");
+    host.innerHTML = CITIES.map((c,i)=>`
+      <div class="clock">
+        <div class="city"><span>${c.name}</span><em>${offsetLabel(c.tz)}</em></div>
+        <div class="time" id="clk${i}">--:--<small></small></div>
+      </div>`).join("");
+  }
+  function tickClocks(){
+    CITIES.forEach((c,i)=>{
+      const el = document.getElementById("clk"+i); if(!el) return;
+      const now = new Date();
+      const hm = new Intl.DateTimeFormat("en-GB",{timeZone:c.tz,hour:"2-digit",minute:"2-digit",hour12:false}).format(now);
+      const ss = new Intl.DateTimeFormat("en-GB",{timeZone:c.tz,second:"2-digit"}).format(now);
+      el.innerHTML = `${hm}<small>:${ss}</small>`;
+    });
+  }
+
+  /* ---------------- focus timer ---------------- */
+  let focusInt = null;
+  const fmt = s => String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+  function renderFocus(){
+    const d = document.getElementById("focusDisp");
+    d.textContent = fmt(state.focus.remaining);
+    d.classList.toggle("run", state.focus.running);
+    document.getElementById("focusToggle").textContent = state.focus.running ? "❚❚" : "▶";
+    document.querySelectorAll("#focusPresets button").forEach(b=>b.classList.toggle("on", +b.dataset.min===state.focus.minutes));
+  }
+  function focusStep(){
+    if(state.focus.remaining<=0){ stopFocus(); state.focus.remaining=0; renderFocus(); toast("⏱️ Focus block done — take a breather"); save(); return; }
+    state.focus.remaining--; renderFocus();
+    if(state.focus.remaining%5===0) save();
+  }
+  function startFocus(){ if(focusInt) return; state.focus.running=true; focusInt=setInterval(focusStep,1000); renderFocus(); save(); }
+  function stopFocus(){ state.focus.running=false; clearInterval(focusInt); focusInt=null; renderFocus(); save(); }
+
+  document.getElementById("focusToggle").onclick = ()=> state.focus.running ? stopFocus() : startFocus();
+  document.getElementById("focusReset").onclick = ()=>{ stopFocus(); state.focus.remaining=state.focus.minutes*60; renderFocus(); save(); };
+  document.getElementById("focusPresets").onclick = e=>{
+    const b=e.target.closest("button[data-min]"); if(!b) return;
+    stopFocus(); state.focus.minutes=+b.dataset.min; state.focus.remaining=state.focus.minutes*60; renderFocus(); save();
+  };
+
+  /* ---------------- goal ---------------- */
+  function allTasks(){ return state.columns.flatMap(c=>c.tasks); }
+  function goalProgress(){
+    if(!state.goal) return {done:0,total:0,pct:0};
+    const linked = allTasks().filter(t=>t.goalId===state.goal.id);
+    const done = linked.filter(t=>t.done).length;
+    const total = linked.length;
+    return { done, total, pct: total? Math.round(done/total*100) : 0 };
+  }
+  function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }catch(e){ return iso; } }
+
+  function renderGoal(){
+    const el = document.getElementById("goalPanel");
+    if(!state.goal){
+      el.innerHTML = `
+        <div class="goal-head"><span class="eyebrow">Road to the goal</span></div>
+        <div class="goal-empty">
+          <h2>Set a shared goal</h2>
+          <p>Give the crew a goal with a deadline. Your team marker travels the timeline toward the finish as linked tasks get closed — and reward chests unlock along the way.</p>
+          <button class="btn" id="setGoalBtn">Set a goal</button>
+        </div>`;
+      document.getElementById("setGoalBtn").onclick = ()=>openGoal();
+      return;
+    }
+    const g = state.goal, pr = goalProgress();
+    const chests = g.rewards.filter(r=>r.label.trim()).map(r=>{
+      const open = pr.pct>=r.pct;
+      return { ...r, open };
+    });
+    el.innerHTML = `
+      <div class="goal-head"><span class="eyebrow">Road to the goal</span>
+        <button class="btn ghost sm gedit" id="editGoalBtn" style="margin-left:auto">Edit</button>
+      </div>
+      <div class="goal-live">
+        <div class="gtitle">
+          <h2>${esc(g.title||"Goal")}</h2>
+          <span class="meta"><b>${pr.done}</b> of <b>${pr.total}</b> linked tasks done · <b>${pr.total-pr.done}</b> to go</span>
+        </div>
+        <div class="track">
+          <div class="rail"><i style="width:${pr.pct}%"></i></div>
+          ${chests.map(c=>`<div class="chest ${c.open?"open":""}" style="left:${c.pct}%" title="${esc(c.label)} · ${c.pct}%">${c.open?"🎁":"🔒"}</div>`).join("")}
+          <div class="runner" style="left:${pr.pct}%">
+            <div class="bub">${g.teamEmoji||"🛎️"}</div><span class="cap">us</span>
+          </div>
+          <div class="finish">${g.finishEmoji||"🏆"}</div>
+          <div class="dates"><span>${fmtDate(g.start)}</span><span>${fmtDate(g.deadline)}</span></div>
+        </div>
+        <div class="rewards">
+          ${chests.length? chests.map(c=>`<span class="reward ${c.open?"open":""}"><span class="pct">${c.open?"🎁":"🔒"} ${c.pct}%</span> · ${esc(c.label)}</span>`).join("")
+            : `<span class="reward">No reward chests yet — add some when you edit the goal</span>`}
+        </div>
+      </div>`;
+    document.getElementById("editGoalBtn").onclick = ()=>openGoal();
+  }
+
+  /* ---------------- board ---------------- */
+  function renderBoard(){
+    const b = document.getElementById("board");
+    b.innerHTML = "";
+    state.columns.forEach((col,ci)=>{
+      const done = col.tasks.filter(t=>t.done).length;
+      const el = document.createElement("div");
+      el.className="col";
+      el.innerHTML = `
+        <div class="col-head">
+          <input value="${esc(col.name)}" data-col="${col.id}" aria-label="List name">
+          <span class="col-count">${done}/${col.tasks.length}</span>
+          <button class="mini" data-mv="l" data-col="${col.id}" title="Move left" ${ci===0?"disabled style=opacity:.3":""}>←</button>
+          <button class="mini" data-mv="r" data-col="${col.id}" title="Move right" ${ci===state.columns.length-1?"disabled style=opacity:.3":""}>→</button>
+          <button class="mini" data-delcol="${col.id}" title="Delete list">✕</button>
+        </div>
+        <div class="cards" data-cards="${col.id}"></div>
+        <button class="addtask" data-addtask="${col.id}">+ New task</button>`;
+      const cards = el.querySelector(".cards");
+      col.tasks.forEach(t=>cards.appendChild(taskCard(t,col.id)));
+      b.appendChild(el);
+    });
+    const add = document.createElement("button");
+    add.className="addcol"; add.id="addCol"; add.textContent="+ Add list";
+    b.appendChild(add);
+    add.onclick = ()=>{ state.columns.push({id:uid(),name:"New list",tasks:[]}); commit(); };
+  }
+
+  function taskCard(t,colId){
+    const el = document.createElement("div");
+    el.className = "card"+(t.done?" done":"");
+    const pr = t.priority==="high"?"p-high":t.priority==="low"?"p-low":"p-med";
+    const prLabel = t.priority==="high"?"High":t.priority==="low"?"Low":"Medium";
+    el.innerHTML = `
+      <div class="card-top">
+        <button class="chk ${t.done?"on":""}" data-done="${t.id}" aria-label="Toggle done">${t.done?"✓":""}</button>
+        <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
+        <div class="dust-ctl">
+          <button data-dust="-1" data-t="${t.id}" aria-label="Less dust">−</button>
+          <span class="n">${t.dust}<span title="dust">🌫️</span></span>
+          <button data-dust="1" data-t="${t.id}" aria-label="More dust">+</button>
+        </div>
+      </div>
+      <div class="tags">
+        <span class="pill ${pr}">${prLabel}</span>
+        ${t.urgency?`<span class="pill">${esc(t.urgency)}</span>`:""}
+        ${t.project?`<span class="pill">${esc(t.project)}</span>`:""}
+        ${t.assignee?`<span class="pill who">${esc(t.assignee)}</span>`:""}
+        ${t.link?`<span class="pill link">🔗 link</span>`:""}
+      </div>`;
+    el.dataset.colId = colId;
+    return el;
+  }
+
+  // board interactions (delegated)
+  document.getElementById("board").addEventListener("click", e=>{
+    const t = e.target;
+    let m;
+    if((m=t.closest("[data-done]"))){ toggleDone(m.dataset.done); }
+    else if((m=t.closest("[data-dust]"))){ bumpDust(m.dataset.t, +m.dataset.dust); }
+    else if((m=t.closest("[data-open]"))){ openTask(m.dataset.open); }
+    else if((m=t.closest("[data-addtask]"))){ addTask(m.dataset.addtask); }
+    else if((m=t.closest("[data-mv]"))){ moveCol(m.dataset.col, m.dataset.mv); }
+    else if((m=t.closest("[data-delcol]"))){ delCol(m.dataset.delcol); }
+  });
+  document.getElementById("board").addEventListener("change", e=>{
+    const inp = e.target.closest("input[data-col]");
+    if(inp){ const c=findCol(inp.dataset.col); if(c){ c.name=inp.value; save(); } }
+  });
+
+  function findCol(id){ return state.columns.find(c=>c.id===id); }
+  function findTask(id){ for(const c of state.columns){ const t=c.tasks.find(x=>x.id===id); if(t) return {t,c}; } return null; }
+
+  function toggleDone(id){
+    const f = findTask(id); if(!f) return;
+    f.t.done = !f.t.done;
+    if(f.t.done) onTaskClosed(f.t);
+    commit();
+  }
+  function bumpDust(id,d){
+    const f=findTask(id); if(!f) return;
+    f.t.dust = Math.max(0, f.t.dust+d);
+    commit();
+  }
+  function addTask(colId){
+    const c=findCol(colId); if(!c) return;
+    const t={ id:uid(), title:"", done:false, dust:3, priority:"med", urgency:"", project:"", assignee:"", link:"", goalId:"" };
+    c.tasks.push(t); save();
+    openTask(t.id, true);
+  }
+  function moveCol(id,dir){
+    const i=state.columns.findIndex(c=>c.id===id); if(i<0) return;
+    const j = dir==="l"? i-1 : i+1;
+    if(j<0||j>=state.columns.length) return;
+    [state.columns[i],state.columns[j]]=[state.columns[j],state.columns[i]];
+    commit();
+  }
+  function delCol(id){
+    const c=findCol(id); if(!c) return;
+    if(c.tasks.length && !confirmInline) {}
+    state.columns = state.columns.filter(x=>x.id!==id);
+    commit();
+  }
+
+  /* --------- achievements / streak --------- */
+  function onTaskClosed(t){
+    const st = state.profile.stats;
+    st.closed++;
+    st.sweptDust += t.dust;
+    if(t.dust>=10) st.deepClean=true;
+    const h = new Date().getHours();
+    if(h>=5 && h<8) st.early=true;
+    if(h>=0 && h<5) st.night=true;
+    // streak
+    if(!state.profile.paused){
+      const tk=todayKey();
+      if(state.profile.lastClose!==tk){
+        const yest=addDays(tk,-1);
+        state.profile.streakDays = state.profile.lastClose===yest ? state.profile.streakDays+1 : 1;
+        state.profile.lastClose=tk;
+      }
+    }
+    const newly = achievements().filter(a=>a.on && !seenAch.has(a.id));
+    if(newly.length){ newly.forEach(a=>seenAch.add(a.id)); toast(`🏅 Achievement: ${newly[0].name}`); }
+  }
+  function achievements(){
+    const s=state.profile.stats;
+    return [
+      { id:"first",  ic:"🛎️", name:"First check-in", desc:"Close your first task",       on:s.closed>=1 },
+      { id:"ten",    ic:"🔟", name:"On a roll",       desc:"Close 10 tasks",              on:s.closed>=10 },
+      { id:"fifty",  ic:"🧽", name:"Housekeeping hero",desc:"Close 50 tasks",             on:s.closed>=50 },
+      { id:"hundred",ic:"💎", name:"Diamond status",  desc:"Close 100 tasks",             on:s.closed>=100 },
+      { id:"deep",   ic:"⛰️", name:"Deep clean",      desc:"Finish a task worth 10+ dust",on:!!s.deepClean },
+      { id:"spot",   ic:"✨", name:"Spotless",        desc:"Sweep away 50 dust total",    on:s.sweptDust>=50 },
+      { id:"early",  ic:"🌅", name:"Early check-in",  desc:"Finish a task 5–8 AM",        on:!!s.early },
+      { id:"night",  ic:"🌙", name:"Night auditor",   desc:"Finish a task midnight–5 AM", on:!!s.night },
+      { id:"fire",   ic:"🔥", name:"Week on fire",    desc:"Hit a 7-day streak",          on:state.profile.streakDays>=7 }
+    ];
+  }
+  const seenAch = new Set();
+  try{ achievements().forEach(a=>{ if(a.on) seenAch.add(a.id); }); }catch(e){}
+
+  /* ---------------- dust layer ---------------- */
+  const dustLayer = document.getElementById("dustLayer");
+  let bunnies = [];
+  function openDustTotal(){ return allTasks().filter(t=>!t.done).reduce((s,t)=>s+t.dust,0); }
+  function syncDust(){
+    const total = openDustTotal();
+    document.getElementById("dustCount").innerHTML = `<b>${total}</b> 🌫️ dust to sweep`;
+    const want = Math.min(42, Math.ceil(total/2));
+    while(bunnies.length<want){
+      const b=document.createElement("div");
+      b.className="dustbunny";
+      b.innerHTML='<div class="body"></div><span class="eye1"></span><span class="eye2"></span>';
+      const scale = 0.7+Math.random()*0.8;
+      b.dataset.x = Math.random()*100;
+      b.dataset.sp = (0.4+Math.random()*0.7)*(Math.random()<.5?-1:1);
+      b.dataset.ph = Math.random()*Math.PI*2;
+      b.dataset.sc = scale;
+      b.style.opacity = 0.55+Math.random()*0.4;
+      dustLayer.appendChild(b);
+      bunnies.push(b);
+    }
+    while(bunnies.length>want){ const b=bunnies.pop(); b.remove(); }
+  }
+  let t0=performance.now();
+  function animDust(now){
+    const w = window.innerWidth||800;
+    const dt = Math.min(50, now-t0); t0=now;
+    for(const b of bunnies){
+      let x = parseFloat(b.dataset.x) + parseFloat(b.dataset.sp)*dt*0.012;
+      if(x>104) x=-4; if(x<-4) x=104;
+      b.dataset.x = x;
+      const ph = parseFloat(b.dataset.ph)+dt*0.003;
+      b.dataset.ph = ph;
+      const bob = Math.sin(ph)*7;
+      const sc = b.dataset.sc;
+      b.style.transform = `translate(${x/100*w}px, ${bob}px) scale(${sc})`;
+    }
+    requestAnimationFrame(animDust);
+  }
+
+  /* ---------------- overlays ---------------- */
+  const scrim = document.getElementById("scrim");
+  function openSheet(html){
+    scrim.innerHTML = html;
+    scrim.hidden = false;
+    document.body.style.overflow="hidden";
+    scrim.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet);
+  }
+  function closeSheet(){ scrim.hidden=true; scrim.innerHTML=""; document.body.style.overflow=""; }
+  scrim.addEventListener("mousedown", e=>{ if(e.target===scrim) closeSheet(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !scrim.hidden) closeSheet(); });
+
+  const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const confirmInline = false;
+
+  /* --------- task editor --------- */
+  let taskTimerInt=null, taskTimer={rem:0,run:false,id:null};
+  function openTask(id, isNew){
+    const f=findTask(id); if(!f) return;
+    const t=f.t;
+    const goalOpts = state.goal ? `<option value="${state.goal.id}" ${t.goalId===state.goal.id?"selected":""}>${esc(state.goal.title)}</option>` : "";
+    const teamOpts = ["",...state.team].map(n=>`<option value="${esc(n)}" ${t.assignee===n?"selected":""}>${n?esc(n):"Unassigned"}</option>`).join("");
+    openSheet(`
+      <div class="sheet wide" role="dialog" aria-modal="true" aria-label="Task">
+        <div class="sheet-head">
+          <h2>${isNew?"New task":"Task"}</h2>
+          <button class="x" data-close aria-label="Close">✕</button>
+        </div>
+        <div class="sheet-body">
+          <div class="field"><label for="tTitle">Title</label>
+            <input class="in" id="tTitle" value="${esc(t.title)}" placeholder="What needs doing?"></div>
+          <div class="field"><label for="tDesc">Notes</label>
+            <textarea class="in" id="tDesc" placeholder="Details, steps, links…">${esc(t.desc||"")}</textarea></div>
+          <div class="row2">
+            <div class="field"><label>Priority</label>
+              <div class="seg" id="tPrio">
+                <button data-v="low"  class="${t.priority==="low"?"on":""}">Low</button>
+                <button data-v="med"  class="${t.priority==="med"?"on":""}">Medium</button>
+                <button data-v="high" class="${t.priority==="high"?"on":""}">High</button>
+              </div></div>
+            <div class="field"><label for="tUrg">Urgency</label>
+              <input class="in" id="tUrg" value="${esc(t.urgency)}" placeholder="e.g. Today, This week"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="tProj">Project / area</label>
+              <input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
+            <div class="field"><label for="tWho">Assignee</label>
+              <select class="in" id="tWho">${teamOpts}</select></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="tLink">Attach a link</label>
+              <input class="in" id="tLink" value="${esc(t.link)}" placeholder="Doc / sheet URL"></div>
+            <div class="field"><label for="tGoal">Counts toward goal</label>
+              <select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
+          </div>
+
+          <div class="dustbox">
+            <div class="hd">🌫️ Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
+            <div class="dustrow">
+              <button id="tDustDown" aria-label="Less">−</button>
+              <span class="big" id="tDustN">${t.dust}</span>
+              <button id="tDustUp" aria-label="More">+</button>
+            </div>
+            <p>Dust bunnies pile up at the bottom of the board. Finish the task and its dust gets swept away.</p>
+          </div>
+
+          <div class="timerbox">
+            <div class="hd">⏱️ Task timer</div>
+            <div class="tdisp" id="tTime">${fmt(taskTimer.id===t.id?taskTimer.rem:0)}</div>
+            <div class="tctl">
+              <input class="in" id="tMin" type="number" min="1" placeholder="minutes" style="max-width:120px">
+              <button class="btn ghost sm" id="tSet">Set</button>
+              <button class="btn sm" id="tStart">${taskTimer.id===t.id&&taskTimer.run?"Pause":"Start"}</button>
+              <button class="btn ghost sm" id="tReset">Reset</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+            <button class="btn danger sm" id="tDel">Delete task</button>
+            <button class="btn" id="tSave" style="margin-left:auto">Save task</button>
+          </div>
+        </div>
+      </div>`);
+
+    // prio
+    scrim.querySelector("#tPrio").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return;
+      scrim.querySelectorAll("#tPrio button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); t._prio=b.dataset.v; };
+    // dust
+    const dn=scrim.querySelector("#tDustN");
+    scrim.querySelector("#tDustUp").onclick=()=>{ t.dust++; dn.textContent=t.dust; save(); syncDust(); renderBoard(); };
+    scrim.querySelector("#tDustDown").onclick=()=>{ t.dust=Math.max(0,t.dust-1); dn.textContent=t.dust; save(); syncDust(); renderBoard(); };
+    // task timer
+    const tTime=scrim.querySelector("#tTime");
+    function paintTT(){ tTime.textContent=fmt(taskTimer.id===t.id?taskTimer.rem:0); tTime.classList.toggle("run",taskTimer.id===t.id&&taskTimer.run);
+      const sb=scrim.querySelector("#tStart"); if(sb) sb.textContent=(taskTimer.id===t.id&&taskTimer.run)?"Pause":"Start"; }
+    scrim.querySelector("#tSet").onclick=()=>{ const m=+scrim.querySelector("#tMin").value; if(m>0){ stopTT(); taskTimer={id:t.id,rem:m*60,run:false}; paintTT(); } };
+    scrim.querySelector("#tStart").onclick=()=>{
+      if(taskTimer.id!==t.id||taskTimer.rem<=0){ const m=+scrim.querySelector("#tMin").value||25; taskTimer={id:t.id,rem:m*60,run:false}; }
+      if(taskTimer.run){ stopTT(); } else { taskTimer.run=true; taskTimerInt=setInterval(()=>{ if(taskTimer.rem<=0){ stopTT(); toast("⏱️ Task timer done"); return;} taskTimer.rem--; paintTT(); },1000); }
+      paintTT();
+    };
+    scrim.querySelector("#tReset").onclick=()=>{ stopTT(); taskTimer={id:null,rem:0,run:false}; paintTT(); };
+    function stopTT(){ taskTimer.run=false; clearInterval(taskTimerInt); taskTimerInt=null; }
+
+    scrim.querySelector("#tDel").onclick=()=>{ f.c.tasks=f.c.tasks.filter(x=>x.id!==t.id); stopTT(); closeSheet(); commit(); };
+    scrim.querySelector("#tSave").onclick=()=>{
+      t.title=scrim.querySelector("#tTitle").value.trim();
+      t.desc=scrim.querySelector("#tDesc").value;
+      t.priority=t._prio||t.priority; delete t._prio;
+      t.urgency=scrim.querySelector("#tUrg").value.trim();
+      t.project=scrim.querySelector("#tProj").value.trim();
+      t.assignee=scrim.querySelector("#tWho").value;
+      t.link=scrim.querySelector("#tLink").value.trim();
+      t.goalId=scrim.querySelector("#tGoal").value;
+      closeSheet(); commit();
+    };
+    if(isNew) setTimeout(()=>{ const i=scrim.querySelector("#tTitle"); if(i){ i.focus(); } },30);
+  }
+
+  /* --------- goal editor --------- */
+  function openGoal(){
+    const g = state.goal || { id:uid(), title:"", start:todayKey(), deadline:addDays(todayKey(),21), teamEmoji:"🛎️", finishEmoji:"🏆", rewards:[{label:"",pct:25},{label:"",pct:50},{label:"",pct:75}] };
+    const r = [0,1,2].map(i=>g.rewards[i]||{label:"",pct:[25,50,75][i]});
+    openSheet(`
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Goal">
+        <div class="sheet-head"><h2>${state.goal?"Edit goal":"New goal"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
+        <div class="sheet-body">
+          <div class="field"><label for="gTitle">Goal</label>
+            <input class="in" id="gTitle" value="${esc(g.title)}" placeholder="e.g. Q4 Guest Satisfaction Push"></div>
+          <div class="row2">
+            <div class="field"><label for="gStart">Start</label><input class="in" id="gStart" type="date" value="${g.start}"></div>
+            <div class="field"><label for="gEnd">Deadline</label><input class="in" id="gEnd" type="date" value="${g.deadline}"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="gTeam">Team marker</label><input class="in" id="gTeam" value="${esc(g.teamEmoji)}" maxlength="4" placeholder="🛎️"></div>
+            <div class="field"><label for="gFin">Finish marker</label><input class="in" id="gFin" value="${esc(g.finishEmoji)}" maxlength="4" placeholder="🏆"></div>
+          </div>
+          <div class="field"><label>Reward chests along the way</label>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${r.map((x,i)=>`<div style="display:flex;gap:8px">
+                <input class="in gR" data-i="${i}" value="${esc(x.label)}" placeholder="Reward (leave blank for no chest)">
+                <input class="in gP" data-i="${i}" type="number" min="1" max="100" value="${x.pct}" style="max-width:88px"> <span style="align-self:center;color:var(--muted)">%</span>
+              </div>`).join("")}
+            </div>
+            <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">A chest opens once that % of the goal's linked tasks are done. Link tasks to the goal from each task's "Counts toward goal" field — progress is the share of linked tasks completed.</p>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            ${state.goal?`<button class="btn danger sm" id="gDel">Remove goal</button>`:""}
+            <button class="btn gold" id="gSave" style="margin-left:auto">Save goal</button>
+          </div>
+        </div>
+      </div>`);
+    scrim.querySelector("#gSave").onclick=()=>{
+      const rewards=[0,1,2].map(i=>({
+        label:scrim.querySelector(`.gR[data-i="${i}"]`).value,
+        pct:Math.max(1,Math.min(100,+scrim.querySelector(`.gP[data-i="${i}"]`).value||((i+1)*25)))
+      }));
+      state.goal={ id:g.id, title:scrim.querySelector("#gTitle").value.trim()||"Goal",
+        start:scrim.querySelector("#gStart").value, deadline:scrim.querySelector("#gEnd").value,
+        teamEmoji:scrim.querySelector("#gTeam").value.trim()||"🛎️", finishEmoji:scrim.querySelector("#gFin").value.trim()||"🏆",
+        rewards };
+      closeSheet(); renderGoal(); save();
+    };
+    const del=scrim.querySelector("#gDel"); if(del) del.onclick=()=>{ state.goal=null; closeSheet(); renderGoal(); save(); };
+  }
+
+  /* --------- profile --------- */
+  const AV_EMOJI = ["🧹","💎","🔑","🛎️","🌙","🔥","⭐","🏆","☕","🧳","🗝️","🛏️","🧺","✨","🚪","📋","🧑‍🍳","🥂","🌅","🧠","💪","🦢"];
+  function openProfile(){
+    const p=state.profile;
+    const bars=Array.from({length:7},(_,i)=>`<div class="sb ${i<Math.min(7,p.streakDays)?"on":""}"></div>`).join("");
+    const ems=AV_EMOJI.map(e=>`<button data-em="${e}" class="${p.emojis.includes(e)?"on":""}">${e}</button>`).join("");
+    const achs=achievements().map(a=>`<div class="ach ${a.on?"on":""}"><span class="ic">${a.ic}</span><span class="an">${a.name}</span><span class="ad">${a.desc}</span></div>`).join("");
+    openSheet(`
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Profile">
+        <div class="sheet-head"><h2>Your crew card</h2><button class="x" data-close aria-label="Close">✕</button></div>
+        <div class="sheet-body">
+          <div class="field"><label for="pName">Name on the board</label>
+            <input class="in" id="pName" value="${esc(p.name)}" placeholder="How the crew sees you"></div>
+          <div class="field"><label for="pStatus">Status</label>
+            <input class="in" id="pStatus" value="${esc(p.status)}" placeholder="e.g. Front desk · PM shift"></div>
+
+          <div class="field"><label>Shift streak</label>
+            <div class="streakbars">${bars}</div>
+            <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">🔥 <b style="color:var(--fg)">${p.streakDays} day${p.streakDays===1?"":"s"}</b> in a row with a task closed.${p.paused?" Paused — your streak is safe.":""}</p>
+          </div>
+
+          <div class="field"><label>Avatar emoji <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— pick up to 3</span></label>
+            <div class="emoji-grid" id="emGrid">${ems}</div>
+          </div>
+
+          <label class="chkline"><span class="box ${p.showStreak?"on":""}" id="cShow">${p.showStreak?"✓":""}</span>
+            <span>Show my streak on the board<small>Others can see your 🔥 count next to your name</small></span></label>
+          <label class="chkline"><span class="box ${p.paused?"on":""}" id="cPause">${p.paused?"✓":""}</span>
+            <span>Pause: on leave or sick<small>Your streak won't reset while this is on</small></span></label>
+
+          <div class="section-cap">My achievements</div>
+          <div class="ach-grid">${achs}</div>
+
+          <button class="btn" id="pSave" style="margin-top:6px">Save card</button>
+        </div>
+      </div>`);
+    scrim.querySelector("#emGrid").onclick=e=>{
+      const b=e.target.closest("button[data-em]"); if(!b) return;
+      const em=b.dataset.em, list=state.profile.emojis;
+      const i=list.indexOf(em);
+      if(i>=0) list.splice(i,1);
+      else { if(list.length>=3) list.shift(); list.push(em); }
+      scrim.querySelectorAll("#emGrid button").forEach(x=>x.classList.toggle("on",list.includes(x.dataset.em)));
+    };
+    const cShow=scrim.querySelector("#cShow"), cPause=scrim.querySelector("#cPause");
+    cShow.parentElement.onclick=()=>{ state.profile.showStreak=!state.profile.showStreak; cShow.classList.toggle("on",state.profile.showStreak); cShow.textContent=state.profile.showStreak?"✓":""; };
+    cPause.parentElement.onclick=()=>{ state.profile.paused=!state.profile.paused; cPause.classList.toggle("on",state.profile.paused); cPause.textContent=state.profile.paused?"✓":""; };
+    scrim.querySelector("#pSave").onclick=()=>{
+      state.profile.name=scrim.querySelector("#pName").value.trim()||"You";
+      state.profile.status=scrim.querySelector("#pStatus").value.trim();
+      if(state.team[0]!==state.profile.name && !state.team.includes(state.profile.name)) state.team.unshift(state.profile.name);
+      closeSheet(); renderProfile(); save();
+    };
+  }
+  document.getElementById("profBtn").onclick=openProfile;
+
+  function renderProfile(){
+    const p=state.profile;
+    document.getElementById("profName").textContent=p.name;
+    document.getElementById("profAv").textContent=p.emojis.slice(0,3).join("")||"🧹";
+    document.getElementById("profStreak").textContent=p.streakDays;
+    document.getElementById("profStreak").closest(".ps").style.display=p.showStreak?"":"none";
+  }
+
+  /* ---------------- toast ---------------- */
+  let toastT=null;
+  function toast(msg){
+    const el=document.getElementById("toast");
+    el.textContent=msg; el.classList.add("show");
+    clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),2600);
+  }
+
+  /* ---------------- commit = render + save ---------------- */
+  function commit(){ renderBoard(); renderGoal(); syncDust(); save(); }
+
+  /* ---------------- boot ---------------- */
+  renderClocks(); tickClocks(); setInterval(tickClocks,1000);
+  renderFocus(); if(state.focus.running){ state.focus.running=false; } // don't auto-resume ticking across reloads
+  renderProfile(); renderGoal(); renderBoard(); syncDust();
+  requestAnimationFrame(animDust);
+})();
+</script>
