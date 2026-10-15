@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Hilton Crew Board — server.
+ * ANEON — server.
  * Serves the front-end and a small REST API backed by SQLite, with
  * Server-Sent Events for live board sync across everyone signed in.
  */
@@ -488,5 +488,5 @@ app.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] })
 app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 app.listen(PORT, () => {
-  console.log(`Hilton Crew Board running on http://localhost:${PORT}`);
+  console.log(`ANEON running on http://localhost:${PORT}`);
 });

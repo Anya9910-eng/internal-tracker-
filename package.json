@@ -1,7 +1,7 @@
 {
-  "name": "hilton-crew-board",
+  "name": "aneon",
   "version": "1.0.0",
-  "description": "Gamified internal team tracker for Hilton crews — multi-user, self-hosted (Node + SQLite).",
+  "description": "ANEON — gamified internal team tracker, multi-user and self-hosted (Node + SQLite).",
   "license": "MIT",
   "type": "commonjs",
   "main": "server.js",

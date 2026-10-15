@@ -1,6 +1,6 @@
-# Hilton Crew Board
+# ANEON
 
-A gamified internal team tracker for Hilton crews — a kanban board wrapped in light
+A gamified internal team tracker — a kanban board wrapped in light
 gamification (streaks, achievements, a shared goal, floating "dust bunnies") to keep a
 shift crew motivated.
 
@@ -104,8 +104,7 @@ single-hotel crew with room to spare.
 - **No email sending**, so there's no password-reset email yet — keep that in mind for a
   production rollout. Password resets, roles/permissions, and drag-and-drop card ordering
   are natural next steps.
-- **Trademark.** This uses the Hilton name and an "H" mark for an internal pilot/demo.
-  Get sign-off before using the branding on anything public-facing.
+- **Branding.** The product name and "A" mark are for an internal pilot/demo.
 
 ## Project layout
 
