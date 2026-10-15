@@ -224,6 +224,25 @@
   .crew .av{width:30px;height:30px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:13px;letter-spacing:-2px}
   .crew .nm{font-weight:600}.crew .st{color:var(--muted-2);font-size:11.5px}
   .crew .fire{margin-left:auto;color:var(--gold);font-size:12px;font-weight:700}
+  .crew .row{padding:3px 0}
+  .crew .toss-n{color:var(--muted-2);font-size:11px;font-weight:700;margin-left:2px}
+  .crew-actions{display:inline-flex;gap:4px;margin-left:auto}
+  .crew-actions button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);font-size:14px;display:grid;place-items:center;transition:border-color .12s,transform .1s}
+  .crew-actions button:hover{border-color:var(--accent)}
+  .crew-actions button:active{transform:scale(.9)}
+  /* task reactions */
+  .rx-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .rx{display:inline-flex;align-items:center;gap:4px;background:var(--surface-3);border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;cursor:pointer;transition:border-color .12s,background .12s}
+  .rx.mine{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-bright)}
+  .rx .c{font-variant-numeric:tabular-nums}
+  .rx-add{width:24px;height:24px;border-radius:999px;border:1px dashed var(--line-strong);background:transparent;color:var(--muted);font-size:13px;display:grid;place-items:center}
+  .rx-add:hover{color:var(--fg);border-color:var(--accent)}
+  .rx-pop{display:flex;gap:4px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:6px;box-shadow:var(--shadow)}
+  .rx-pop button{width:30px;height:30px;border-radius:8px;border:none;background:transparent;font-size:17px}
+  .rx-pop button:hover{background:var(--surface-2)}
+  /* flying nudge emoji */
+  .nudge-fly{position:fixed;z-index:70;font-size:34px;pointer-events:none;will-change:transform,opacity}
+  @keyframes flyacross{0%{transform:translate(0,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
 
   .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(140%);z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
   .toast.show{transform:translateX(-50%) translateY(0)}
@@ -408,9 +427,37 @@
     try{
       es=new EventSource("/api/events");
       es.onmessage=()=>scheduleLoad();
+      es.addEventListener("nudge",e=>{ try{ handleNudge(JSON.parse(e.data)); }catch(_){} });
       es.onerror=()=>{/* browser auto-retries */};
     }catch(e){}
   }
+  /* someone tossed/high-fived/poked/passed-a-chore at me */
+  function handleNudge(p){
+    const who=esc(p.fromName||"Someone");
+    let msg;
+    if(p.kind==="chore") msg=`${p.emoji||"💩"} ${who} passed you a chore: ${esc(p.text||"a task")}`;
+    else if(p.kind==="highfive") msg=`🙌 ${who} high-fived you!`;
+    else if(p.kind==="poke") msg=`👈 ${who} poked you!`;
+    else msg=`${p.emoji||"💩"} ${who} tossed ${p.emoji||"💩"} at you!`;
+    toast(msg);
+    flingEmoji(p.emoji||(p.kind==="highfive"?"🙌":p.kind==="poke"?"👈":"💩"), p.kind==="chore"?5:4);
+  }
+  function flingEmoji(emoji,n){
+    const W=window.innerWidth||800, H=window.innerHeight||600;
+    for(let i=0;i<n;i++){
+      const el=document.createElement("div"); el.className="nudge-fly"; el.textContent=emoji;
+      const startX=Math.random()*W, startY=H+40;
+      el.style.left=startX+"px"; el.style.top=startY+"px";
+      el.style.setProperty("--dx",((Math.random()-0.5)*W*0.6).toFixed(0)+"px");
+      el.style.setProperty("--dy",(-(H*0.55)-Math.random()*H*0.3).toFixed(0)+"px");
+      el.style.setProperty("--rot",((Math.random()-0.5)*720).toFixed(0)+"deg");
+      el.style.animation=`flyacross ${(1.1+Math.random()*0.7).toFixed(2)}s cubic-bezier(.3,.7,.4,1) forwards`;
+      el.style.animationDelay=(i*0.08)+"s";
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),2400);
+    }
+  }
+  function sendNudge(toUserId,kind,emoji){ api("POST","/api/nudge",{toUserId,kind,emoji}).catch(()=>{}); }
   function scheduleLoad(){ clearTimeout(loadTimer); loadTimer=setTimeout(loadBoard,150); }
 
   async function loadBoard(){
@@ -567,9 +614,14 @@
         ${dueP}
         ${t.project?`<span class="pill">${esc(t.project)}</span>`:""}
         ${who?`<span class="pill who">${esc(who)}</span>`:""}
+      </div>
+      <div class="rx-row">
+        ${(t.reactions||[]).map(r=>`<span class="rx ${r.mine?"mine":""}" data-react="${t.id}" data-emoji="${r.emoji}">${r.emoji}<span class="c">${r.count}</span></span>`).join("")}
+        <button class="rx-add" data-reactadd="${t.id}" aria-label="Add reaction">＋</button>
       </div>`;
     return el;
   }
+  const REACTION_EMOJI=["👍","🔥","💩","🙌","😅","❤️","👀","🎉"];
 
   function findTask(id){ for(const c of state.columns){ const t=c.tasks.find(x=>x.id===id); if(t) return t; } return (state.recurring||[]).find(x=>x.id===id)||null; }
 
@@ -584,8 +636,38 @@
     else if((m=e.target.closest("[data-addtask]"))) addTask(m.dataset.addtask);
     else if((m=e.target.closest("[data-mv]"))) mutate(()=>api("POST","/api/columns/"+m.dataset.col+"/move",{dir:m.dataset.mv}));
     else if((m=e.target.closest("[data-addrecur]"))) addRecurring(m.dataset.addrecur);
+    else if((m=e.target.closest("[data-react]"))) react(m.dataset.react,m.dataset.emoji);
+    else if((m=e.target.closest("[data-reactadd]"))) openReactPop(m,m.dataset.reactadd);
     else if((m=e.target.closest("[data-delcol]"))) mutate(()=>api("DELETE","/api/columns/"+m.dataset.delcol));
   });
+  function react(taskId,emoji){ mutate(()=>api("POST","/api/tasks/"+taskId+"/react",{emoji})); }
+  function openReactPop(anchor,taskId){
+    closeReactPop();
+    const pop=document.createElement("div"); pop.className="rx-pop"; pop.id="rxPop";
+    pop.innerHTML=REACTION_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join("");
+    document.body.appendChild(pop);
+    const r=anchor.getBoundingClientRect();
+    pop.style.position="fixed";
+    pop.style.left=Math.min(r.left, (window.innerWidth||800)-pop.offsetWidth-12)+"px";
+    pop.style.top=(r.bottom+6)+"px"; pop.style.zIndex=50;
+    pop.onclick=ev=>{ const b=ev.target.closest("button[data-e]"); if(!b) return; closeReactPop(); react(taskId,b.dataset.e); };
+    setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
+  }
+  function closeReactPop(){ const p=$("#rxPop"); if(p) p.remove(); document.removeEventListener("mousedown",closeReactPopOutside); }
+  function closeReactPopOutside(ev){ if(!ev.target.closest("#rxPop")) closeReactPop(); }
+  const TOSS_EMOJI=["💩","🧹","⭐","🔥","❤️","🧻","🫧","🥐"];
+  function openTossPicker(anchor,toUserId){
+    closeReactPop();
+    const pop=document.createElement("div"); pop.className="rx-pop"; pop.id="rxPop";
+    pop.innerHTML=TOSS_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join("");
+    document.body.appendChild(pop);
+    const r=anchor.getBoundingClientRect();
+    pop.style.position="fixed"; pop.style.zIndex=50;
+    pop.style.left=Math.min(r.left-120, (window.innerWidth||800)-pop.offsetWidth-12)+"px";
+    pop.style.top=(r.bottom+6)+"px";
+    pop.onclick=ev=>{ const b=ev.target.closest("button[data-e]"); if(!b) return; closeReactPop(); sendNudge(toUserId,"toss",b.dataset.e); toast(`${b.dataset.e} tossed!`); };
+    setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
+  }
   $("#board").addEventListener("change", e=>{
     const inp=e.target.closest("input[data-col]");
     if(inp) mutate(()=>api("PATCH","/api/columns/"+inp.dataset.col,{name:inp.value}));
@@ -613,6 +695,7 @@
     const t=findTask(id); if(!t) return;
     const goalOpts = (state.goals||[]).map(g=>`<option value="${g.id}" ${t.goalId===g.id?"selected":""}>${esc(g.title)}</option>`).join("");
     const teamOpts = `<option value="">Unassigned</option>`+state.users.map(u=>`<option value="${u.id}" ${t.assigneeId===u.id?"selected":""}>${esc(u.name)}</option>`).join("");
+    const otherOpts = state.users.filter(u=>u.id!==(state.me&&state.me.id)).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("");
     openSheet(`<div class="sheet wide" role="dialog" aria-modal="true" aria-label="Task">
       <div class="sheet-head"><h2>${isNew?"New task":"Task"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
       <div class="sheet-body">
@@ -629,6 +712,9 @@
           <div class="field"><label for="tProj">Project / area</label><input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
           <div class="field"><label for="tWho">Assignee</label><select class="in" id="tWho">${teamOpts}</select></div>
         </div>
+        ${otherOpts?`<div class="field"><label>Pass this chore <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— reassign it and dump the 💩 on a teammate (they get pinged)</span></label>
+          <div style="display:flex;gap:8px"><select class="in" id="tPassTo"><option value="">Pick a teammate…</option>${otherOpts}</select>
+          <button class="btn ghost sm" id="tPass" type="button" style="white-space:nowrap">Pass 💩</button></div></div>`:""}
         <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— recurring tasks move to the Recurring board</span></label>
           <div class="seg" id="tRecur">
             <button data-v="" class="${!t.recur?"on":""}">Doesn't repeat</button>
@@ -656,6 +742,7 @@
     $("#tPrio").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; document.querySelectorAll("#tPrio button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); prio=b.dataset.v; };
     let recur=t.recur||"";
     $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); };
+    const passBtn=$("#tPass"); if(passBtn) passBtn.onclick=()=>{ const to=$("#tPassTo").value; if(!to){ toast("Pick a teammate first"); return; } closeSheet(); mutate(()=>api("POST","/api/tasks/"+t.id+"/pass",{toUserId:to})); toast("💩 Chore passed!"); };
     let dust=t.dust; const dn=$("#tDustN");
     $("#tDustUp").onclick=()=>{ dust++; dn.textContent=dust; };
     $("#tDustDown").onclick=()=>{ dust=Math.max(0,dust-1); dn.textContent=dust; };
@@ -741,7 +828,16 @@
     const bars=Array.from({length:7},(_,i)=>`<div class="sb ${i<Math.min(7,p.streakDays)?"on":""}"></div>`).join("");
     const ems=AV_EMOJI.map(e=>`<button data-em="${e}" class="${emojis.includes(e)?"on":""}">${e}</button>`).join("");
     const achs=achievements(p).map(a=>`<div class="ach ${a.on?"on":""}"><span class="ic">${a.ic}</span><span class="an">${a.name}</span><span class="ad">${a.desc}</span></div>`).join("");
-    const crewRow=u=>`<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span><span><span class="nm">${esc(u.name)}${u.id===p.id?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}</span>${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span></div>`;
+    const crewRow=u=>{
+      const me=u.id===p.id;
+      const actions=me
+        ? `<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span>`
+        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-toss="${u.id}" title="Toss an emoji">💩</button></span>`;
+      return `<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span>`
+        +`<span><span class="nm">${esc(u.name)}${me?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}`
+        +`${u.tosses?`<span class="toss-n">· ${u.tosses}💩 caught</span>`:""}</span>`
+        +`${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}${actions}</div>`;
+    };
     const dayCrew=state.users.filter(u=>u.shift!=="night");
     const nightCrew=state.users.filter(u=>u.shift==="night");
     const crew=`${dayCrew.length?`<div class="crew-sub">☀️ Day shift (${dayCrew.length})</div>`+dayCrew.map(crewRow).join(""):""}`
@@ -762,7 +858,7 @@
         <label class="chkline"><span class="box ${p.showStreak?"on":""}" id="cShow">${p.showStreak?"✓":""}</span><span>Show my streak on the board<small>Others see your 🔥 count next to your name</small></span></label>
         <label class="chkline"><span class="box ${p.paused?"on":""}" id="cPause">${p.paused?"✓":""}</span><span>Pause: on leave or sick<small>Your streak won't reset while this is on</small></span></label>
         <div class="section-cap">My achievements</div><div class="ach-grid">${achs}</div>
-        <div class="section-cap">Crew (${state.users.length})</div><div class="crew">${crew}</div>
+        <div class="section-cap">Crew (${state.users.length})</div><div class="crew" id="crewList">${crew}</div>
         <button class="btn" id="pSave" style="margin-top:6px">Save card</button>
       </div></div>`);
     let showStreak=p.showStreak, paused=p.paused, shift=p.shift==="night"?"night":"day";
@@ -773,6 +869,13 @@
       document.querySelectorAll("#emGrid button").forEach(x=>x.classList.toggle("on",emojis.includes(x.dataset.em))); };
     $("#cShow").parentElement.onclick=()=>{ showStreak=!showStreak; $("#cShow").classList.toggle("on",showStreak); $("#cShow").textContent=showStreak?"✓":""; };
     $("#cPause").parentElement.onclick=()=>{ paused=!paused; $("#cPause").classList.toggle("on",paused); $("#cPause").textContent=paused?"✓":""; };
+    const crewEl=$("#crewList");
+    if(crewEl) crewEl.onclick=e=>{
+      let m;
+      if((m=e.target.closest("[data-hi]"))){ sendNudge(m.dataset.hi,"highfive"); toast("🙌 High-five sent"); }
+      else if((m=e.target.closest("[data-poke]"))){ sendNudge(m.dataset.poke,"poke"); toast("👈 Poke sent"); }
+      else if((m=e.target.closest("[data-toss]"))){ openTossPicker(m,m.dataset.toss); }
+    };
     $("#pLogout").onclick=async()=>{ try{ await api("POST","/api/auth/logout"); }catch(e){} state.me=null; closeSheet(); showAuth(); };
     $("#pSave").onclick=async()=>{
       const body={ name:$("#pName").value.trim()||p.name, status:$("#pStatus").value.trim(), emojis, showStreak, paused, shift };

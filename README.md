@@ -32,6 +32,10 @@ plus SQLite — no external services, no API keys.
   chests that unlock at % milestones.
 - **Dust** — each task has a "dust" grind rating; open dust drifts along the bottom as
   dust bunnies and gets swept away when a task is finished.
+- **Crew interactions** — four playful, real-time ways to nudge teammates:
+  **toss an emoji** at someone (flies across their screen, with a "caught" tally),
+  **high-five** or **poke** them, **react** to any task card (Slack-style), and
+  **pass a chore** — reassign a task and dump its "dust" on a teammate, who gets pinged.
 - **Streaks & achievements** — per-user shift streak (with a leave/sick pause) and
   hospitality-themed badges: First check-in, On a roll, Housekeeping hero, Diamond status,
   Deep clean, Spotless, Early check-in, Night auditor, Week on fire.

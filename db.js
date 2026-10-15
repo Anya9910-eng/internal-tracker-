@@ -95,6 +95,25 @@ db.exec(`
     position      INTEGER DEFAULT 0,
     created_at    TEXT DEFAULT ''
   );
+
+  CREATE TABLE IF NOT EXISTS task_reactions (
+    id         TEXT PRIMARY KEY,
+    task_id    TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS ux_reaction ON task_reactions(task_id,user_id,emoji);
+
+  CREATE TABLE IF NOT EXISTS nudges (
+    id         TEXT PRIMARY KEY,
+    from_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+    to_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    emoji      TEXT DEFAULT '',
+    text       TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+  );
 `);
 
 /* ---------- lightweight migrations (safe to run every boot) ---------- */

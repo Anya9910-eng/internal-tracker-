@@ -25,6 +25,13 @@ function broadcast() {
     try { res.write(`data: changed\n\n`); } catch (e) { /* dropped */ }
   }
 }
+// Deliver a one-off "nudge" (toss / high-five / poke / chore) to one user's open tabs.
+function sendNudge(toId, payload) {
+  const data = JSON.stringify(payload);
+  for (const res of clients) {
+    if (res._uid === toId) { try { res.write(`event: nudge\ndata: ${data}\n\n`); } catch (e) { /* dropped */ } }
+  }
+}
 
 /* ---------------- auth middleware ---------------- */
 function currentUser(req) { return auth.userFromToken(req.cookies && req.cookies.sid); }
@@ -141,10 +148,19 @@ app.get("/api/board", requireAuth, (req, res) => {
   if (resetRecurringIfNeeded()) broadcast();
   const cols = db.prepare("SELECT * FROM columns ORDER BY position, rowid").all();
   const tasks = db.prepare("SELECT * FROM tasks ORDER BY position, rowid").all();
+  // reactions per task, grouped by emoji, with a "mine" flag for the current user
+  const rx = db.prepare("SELECT task_id,emoji,user_id FROM task_reactions").all();
+  const rxByTask = {};
+  rx.forEach(r => {
+    const g = (rxByTask[r.task_id] = rxByTask[r.task_id] || {});
+    const e = (g[r.emoji] = g[r.emoji] || { emoji: r.emoji, count: 0, mine: false });
+    e.count++; if (r.user_id === req.user.id) e.mine = true;
+  });
   const shape = t => ({
     id: t.id, title: t.title, notes: t.notes, done: !!t.done, dust: t.dust,
     priority: t.priority, dueDate: t.due_date || "", project: t.project,
-    assigneeId: t.assignee_id, goalId: t.goal_id || "", recur: t.recur || ""
+    assigneeId: t.assignee_id, goalId: t.goal_id || "", recur: t.recur || "",
+    reactions: rxByTask[t.id] ? Object.values(rxByTask[t.id]) : []
   });
   const byCol = {};
   cols.forEach(c => (byCol[c.id] = []));
@@ -153,9 +169,11 @@ app.get("/api/board", requireAuth, (req, res) => {
     if (t.recur) { recurring.push(shape(t)); return; }   // recurring tasks live in the Recurring view only
     if (byCol[t.column_id]) byCol[t.column_id].push(shape(t));
   });
+  const tossRows = db.prepare("SELECT to_id, COUNT(*) n FROM nudges WHERE kind='toss' GROUP BY to_id").all();
+  const tossBy = {}; tossRows.forEach(r => (tossBy[r.to_id] = r.n));
   const users = db.prepare("SELECT id,name,emojis,status,shift,show_streak,streak_days FROM users ORDER BY name").all()
     .map(u => ({ id: u.id, name: u.name, emojis: auth.safeJson(u.emojis, ["🧹"]), status: u.status || "",
-                 shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null }));
+                 shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null, tosses: tossBy[u.id] || 0 }));
   res.json({
     me: auth.publicUser(req.user),
     columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
@@ -330,6 +348,51 @@ app.delete("/api/tasks/:id", requireAuth, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 
+/* ---------------- crew interactions ---------------- */
+const REACTION_EMOJI = ["👍", "🔥", "💩", "🙌", "😅", "❤️", "👀", "🎉"];
+
+// React to a task (Slack-style) — toggles the current user's reaction with this emoji.
+app.post("/api/tasks/:id/react", requireAuth, (req, res) => {
+  const t = db.prepare("SELECT id FROM tasks WHERE id=?").get(req.params.id);
+  if (!t) return res.status(404).json({ error: "Task not found" });
+  const emoji = String((req.body || {}).emoji || "");
+  if (!REACTION_EMOJI.includes(emoji)) return res.status(400).json({ error: "Unknown reaction" });
+  const existing = db.prepare("SELECT id FROM task_reactions WHERE task_id=? AND user_id=? AND emoji=?")
+    .get(t.id, req.user.id, emoji);
+  if (existing) db.prepare("DELETE FROM task_reactions WHERE id=?").run(existing.id);
+  else db.prepare("INSERT INTO task_reactions (id,task_id,user_id,emoji,created_at) VALUES (?,?,?,?,?)")
+    .run(uid(), t.id, req.user.id, emoji, new Date().toISOString());
+  broadcast(); res.json({ ok: true });
+});
+
+// Toss an emoji / high-five / poke another crew member (delivered live).
+const NUDGE_KINDS = { toss: "tossed", highfive: "high-fived", poke: "poked" };
+app.post("/api/nudge", requireAuth, (req, res) => {
+  const b = req.body || {};
+  const to = db.prepare("SELECT id,name FROM users WHERE id=?").get(String(b.toUserId || ""));
+  if (!to) return res.status(404).json({ error: "No such crew member" });
+  const kind = NUDGE_KINDS[b.kind] ? b.kind : "poke";
+  const emoji = kind === "toss" ? String(b.emoji || "💩").slice(0, 8) : (kind === "highfive" ? "🙌" : "👈");
+  db.prepare("INSERT INTO nudges (id,from_id,to_id,kind,emoji,text,created_at) VALUES (?,?,?,?,?,?,?)")
+    .run(uid(), req.user.id, to.id, kind, emoji, "", new Date().toISOString());
+  sendNudge(to.id, { kind, emoji, fromName: req.user.name, verb: NUDGE_KINDS[kind] });
+  if (kind === "toss") broadcast(); // refresh the toss tally for everyone
+  res.json({ ok: true });
+});
+
+// "Dump the dust" — pass a chore (task + its difficulty) to a teammate and notify them.
+app.post("/api/tasks/:id/pass", requireAuth, (req, res) => {
+  const t = db.prepare("SELECT * FROM tasks WHERE id=?").get(req.params.id);
+  if (!t) return res.status(404).json({ error: "Task not found" });
+  const to = db.prepare("SELECT id,name FROM users WHERE id=?").get(String((req.body || {}).toUserId || ""));
+  if (!to) return res.status(404).json({ error: "No such crew member" });
+  db.prepare("UPDATE tasks SET assignee_id=?, updated_at=? WHERE id=?").run(to.id, new Date().toISOString(), t.id);
+  db.prepare("INSERT INTO nudges (id,from_id,to_id,kind,emoji,text,created_at) VALUES (?,?,?,?,?,?,?)")
+    .run(uid(), req.user.id, to.id, "chore", "💩", t.title || "a task", new Date().toISOString());
+  sendNudge(to.id, { kind: "chore", emoji: "💩", fromName: req.user.name, verb: "passed you a chore", text: t.title || "a task" });
+  broadcast(); res.json({ ok: true });
+});
+
 /* ---------------- goals (multiple) ---------------- */
 function sanitizeRewards(arr) {
   return Array.isArray(arr) ? arr.slice(0, 3).map(r => ({
@@ -383,6 +446,7 @@ app.get("/api/events", requireAuth, (req, res) => {
   res.flushHeaders && res.flushHeaders();
   res.write("retry: 3000\n\n");
   res.write("data: hello\n\n");
+  res._uid = req.user.id;
   clients.add(res);
   const ka = setInterval(() => { try { res.write(": keep-alive\n\n"); } catch (e) {} }, 25000);
   req.on("close", () => { clearInterval(ka); clients.delete(res); });
