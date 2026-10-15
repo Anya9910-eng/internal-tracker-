@@ -240,6 +240,10 @@
   .rx-pop{display:flex;gap:4px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:6px;box-shadow:var(--shadow)}
   .rx-pop button{width:30px;height:30px;border-radius:8px;border:none;background:transparent;font-size:17px}
   .rx-pop button:hover{background:var(--surface-2)}
+  .rx-pop.pass-pop{flex-direction:column;gap:2px;padding:8px;max-width:280px;align-items:stretch}
+  .pass-h{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:2px 6px 6px}
+  .pass-item{width:auto!important;height:auto!important;text-align:left;font-size:13px!important;font-weight:600;color:var(--fg);padding:8px 10px!important;border-radius:9px!important;display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .pass-dust{color:var(--muted-2);font-size:11px;font-weight:700;white-space:nowrap}
   /* flying nudge emoji */
   .nudge-fly{position:fixed;z-index:70;font-size:34px;pointer-events:none;will-change:transform,opacity}
   @keyframes flyacross{0%{transform:translate(0,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
@@ -655,17 +659,23 @@
   }
   function closeReactPop(){ const p=$("#rxPop"); if(p) p.remove(); document.removeEventListener("mousedown",closeReactPopOutside); }
   function closeReactPopOutside(ev){ if(!ev.target.closest("#rxPop")) closeReactPop(); }
-  const TOSS_EMOJI=["💩","🧹","⭐","🔥","❤️","🧻","🫧","🥐"];
-  function openTossPicker(anchor,toUserId){
+  // Pass a chore straight from the crew card: pick one of your open tasks to dump on them.
+  function openPassPicker(anchor,toUserId,toName){
     closeReactPop();
-    const pop=document.createElement("div"); pop.className="rx-pop"; pop.id="rxPop";
-    pop.innerHTML=TOSS_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join("");
+    const open=[...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])].filter(t=>!t.done);
+    const meId=state.me&&state.me.id;
+    let list=open.filter(t=>t.assigneeId===meId);      // your own open chores first
+    if(!list.length) list=open;                         // otherwise any open task
+    if(!list.length){ toast("No open chores to pass 🎉"); return; }
+    const pop=document.createElement("div"); pop.className="rx-pop pass-pop"; pop.id="rxPop";
+    pop.innerHTML=`<div class="pass-h">Pass a chore to ${esc(toName||"them")} 💩</div>`
+      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust}🌫️</span></button>`).join("");
     document.body.appendChild(pop);
     const r=anchor.getBoundingClientRect();
     pop.style.position="fixed"; pop.style.zIndex=50;
-    pop.style.left=Math.min(r.left-120, (window.innerWidth||800)-pop.offsetWidth-12)+"px";
+    pop.style.left=Math.max(12,Math.min(r.right-pop.offsetWidth, (window.innerWidth||800)-pop.offsetWidth-12))+"px";
     pop.style.top=(r.bottom+6)+"px";
-    pop.onclick=ev=>{ const b=ev.target.closest("button[data-e]"); if(!b) return; closeReactPop(); sendNudge(toUserId,"toss",b.dataset.e); toast(`${b.dataset.e} tossed!`); };
+    pop.onclick=ev=>{ const b=ev.target.closest("button[data-tid]"); if(!b) return; closeReactPop(); mutate(()=>api("POST","/api/tasks/"+b.dataset.tid+"/pass",{toUserId})); toast("💩 Chore passed!"); };
     setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
   }
   $("#board").addEventListener("change", e=>{
@@ -832,10 +842,10 @@
       const me=u.id===p.id;
       const actions=me
         ? `<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span>`
-        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-toss="${u.id}" title="Toss an emoji">💩</button></span>`;
+        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">💩</button></span>`;
       return `<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span>`
         +`<span><span class="nm">${esc(u.name)}${me?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}`
-        +`${u.tosses?`<span class="toss-n">· ${u.tosses}💩 caught</span>`:""}</span>`
+        +`${u.chores?`<span class="toss-n">· ${u.chores}💩 caught</span>`:""}</span>`
         +`${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}${actions}</div>`;
     };
     const dayCrew=state.users.filter(u=>u.shift!=="night");
@@ -874,7 +884,7 @@
       let m;
       if((m=e.target.closest("[data-hi]"))){ sendNudge(m.dataset.hi,"highfive"); toast("🙌 High-five sent"); }
       else if((m=e.target.closest("[data-poke]"))){ sendNudge(m.dataset.poke,"poke"); toast("👈 Poke sent"); }
-      else if((m=e.target.closest("[data-toss]"))){ openTossPicker(m,m.dataset.toss); }
+      else if((m=e.target.closest("[data-pass]"))){ openPassPicker(m,m.dataset.pass,m.dataset.name); }
     };
     $("#pLogout").onclick=async()=>{ try{ await api("POST","/api/auth/logout"); }catch(e){} state.me=null; closeSheet(); showAuth(); };
     $("#pSave").onclick=async()=>{

@@ -169,11 +169,11 @@ app.get("/api/board", requireAuth, (req, res) => {
     if (t.recur) { recurring.push(shape(t)); return; }   // recurring tasks live in the Recurring view only
     if (byCol[t.column_id]) byCol[t.column_id].push(shape(t));
   });
-  const tossRows = db.prepare("SELECT to_id, COUNT(*) n FROM nudges WHERE kind='toss' GROUP BY to_id").all();
-  const tossBy = {}; tossRows.forEach(r => (tossBy[r.to_id] = r.n));
+  const choreRows = db.prepare("SELECT to_id, COUNT(*) n FROM nudges WHERE kind='chore' GROUP BY to_id").all();
+  const choreBy = {}; choreRows.forEach(r => (choreBy[r.to_id] = r.n));
   const users = db.prepare("SELECT id,name,emojis,status,shift,show_streak,streak_days FROM users ORDER BY name").all()
     .map(u => ({ id: u.id, name: u.name, emojis: auth.safeJson(u.emojis, ["🧹"]), status: u.status || "",
-                 shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null, tosses: tossBy[u.id] || 0 }));
+                 shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null, chores: choreBy[u.id] || 0 }));
   res.json({
     me: auth.publicUser(req.user),
     columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
