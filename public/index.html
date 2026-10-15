@@ -267,6 +267,11 @@
   /* flying nudge emoji */
   .nudge-fly{position:fixed;z-index:70;font-size:34px;pointer-events:none;will-change:transform,opacity}
   @keyframes flyacross{0%{transform:translate(0,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+  /* Sweepy's sweep-up burst on task completion */
+  .sweep-fx{position:fixed;z-index:69;font-size:20px;pointer-events:none;will-change:transform,opacity}
+  @keyframes sweeppop{0%{transform:translate(0,0) scale(.4);opacity:0}25%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:0}}
+  .mascot.scrub .duck{animation:scrub .5s ease}
+  @keyframes scrub{0%,100%{transform:translateY(0) rotate(-2deg)}30%{transform:translateY(-7px) rotate(-7deg)}65%{transform:translateY(0) rotate(6deg)}}
 
   .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(140%);z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
   .toast.show{transform:translateX(-50%) translateY(0)}
@@ -718,7 +723,7 @@
     const t=findTask(id); if(!t) return;
     try{
       const r=await api("POST","/api/tasks/"+id+"/toggle");
-      if(r.done) mascotSay(SWEEP_LINES[Math.floor(Math.random()*SWEEP_LINES.length)]);
+      if(r.done){ mascotSay(SWEEP_LINES[Math.floor(Math.random()*SWEEP_LINES.length)]); sweepCelebrate(); }
       if(r.unlocked&&r.unlocked.length) toast(`🏅 Achievement: ${r.unlocked[0].name}`);
       await loadBoard();
     }catch(err){ if(err.status===401) showAuth(); else toast("⚠️ "+err.message); }
@@ -981,7 +986,7 @@
       <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 58 40;15 58 40;-9 58 40" dur="1.2s" repeatCount="indefinite"/>
     </g>
   </svg></div>`;
-  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false, everDusty=false;
+  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false, everDusty=false, dashTarget=null;
   function buildMascot(){
     if(mascotEl) return;
     mascotEl=document.createElement("div");
@@ -992,15 +997,48 @@
   function updateMascot(dt,w){
     if(!mascotEl) return;
     const duckW=92, maxX=Math.max(14,(w||window.innerWidth||800)-duckW-8);
-    const clean=openDustTotal()===0;
-    const speed=clean?0.015:0.04;           // slows down when there's nothing to sweep
-    mascotX += mascotDir*dt*speed;
-    if(mascotX>maxX){ mascotX=maxX; mascotDir=-1; }
-    if(mascotX<14){ mascotX=14; mascotDir=1; }
+    if(dashTarget!=null){                    // scurrying to a just-finished task's dust
+      const diff=dashTarget-mascotX;
+      mascotDir=diff<0?-1:1;
+      const step=Math.sign(diff)*Math.min(Math.abs(diff), dt*0.22);
+      mascotX+=step;
+      if(Math.abs(dashTarget-mascotX)<6) dashTarget=null;
+    } else {
+      const clean=openDustTotal()===0;
+      const speed=clean?0.015:0.04;          // slows down when there's nothing to sweep
+      mascotX += mascotDir*dt*speed;
+      if(mascotX>maxX){ mascotX=maxX; mascotDir=-1; }
+      if(mascotX<14){ mascotX=14; mascotDir=1; }
+      if(!clean){ everDusty=true; idleSaid=false; }
+      if(clean && everDusty && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
+    }
+    mascotX=Math.max(14,Math.min(maxX,mascotX));
     mascotEl.style.transform=`translateX(${mascotX}px)`;
     mascotEl.classList.toggle("flip", mascotDir<0);
-    if(!clean){ everDusty=true; idleSaid=false; }
-    if(clean && everDusty && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
+  }
+  // Called when a task is completed: Sweepy scurries to the nearest dust bunny and sweeps it up.
+  function sweepCelebrate(){
+    if(!mascotEl) return;
+    const w=window.innerWidth||800;
+    if(bunnies.length){
+      let bestX=null,bestD=1e9;
+      for(const b of bunnies){ const bx=parseFloat(b.dataset.x)/100*w; const d=Math.abs(bx-mascotX); if(d<bestD){ bestD=d; bestX=bx; } }
+      if(bestX!=null) dashTarget=Math.max(14,Math.min(w-100,bestX-26));
+    }
+    setTimeout(sweepBurst,430);
+    mascotEl.classList.add("scrub"); setTimeout(()=>mascotEl.classList.remove("scrub"),650);
+  }
+  function sweepBurst(){
+    const originX=mascotX+46, originY=(window.innerHeight||600)-54;
+    ["✨","✨","✨","💨","💨","🫧"].forEach((em,i)=>{
+      const el=document.createElement("div"); el.className="sweep-fx"; el.textContent=em;
+      el.style.left=originX+"px"; el.style.top=originY+"px";
+      el.style.setProperty("--dx",((Math.random()-0.5)*130).toFixed(0)+"px");
+      el.style.setProperty("--dy",(-28-Math.random()*62).toFixed(0)+"px");
+      el.style.animation=`sweeppop ${(0.7+Math.random()*0.5).toFixed(2)}s ease-out forwards`;
+      el.style.animationDelay=(i*0.04)+"s";
+      document.body.appendChild(el); setTimeout(()=>el.remove(),1500);
+    });
   }
   let sayT=null;
   function mascotSay(text){
