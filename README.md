@@ -27,10 +27,11 @@ plus SQLite — no external services, no API keys.
 - **Live sync** — changes broadcast over Server-Sent Events, so everyone's board updates
   in real time.
 - **World clocks** (McLean HQ, London, Dubai, Riyadh, Egypt) and a per-device focus timer.
-- **Recurring tasks** — set any task to repeat Daily / Weekly / Monthly / Quarterly.
-  Recurring tasks stay on their list on the shift board (tagged 🔁) and also appear
-  in the **Recurring** view grouped by cadence; they auto-uncheck when each cycle
-  rolls over (new day / Monday / 1st of the month / new quarter).
+- **Recurring tasks** — set any task to repeat Daily / Weekly / Monthly / Quarterly,
+  and pick the exact anchor: a **weekday** for Weekly, a **day of the month** (incl.
+  "Last day") for Monthly/Quarterly. The task auto-unchecks when that day comes around.
+  Recurring tasks stay on their list on the shift board (tagged 🔁, e.g. "Weekly · Thu")
+  and also appear in the **Recurring** view grouped by cadence.
 - **Day / Night shifts** — each crew member sets their shift; the crew roster
   groups by shift and names show a ☀️ / 🌙 badge.
 - **Road to the goal** — a shared goal with a deadline, a progress timeline, and reward

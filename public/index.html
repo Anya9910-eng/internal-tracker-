@@ -409,6 +409,15 @@
   let state = { me:null, columns:[], recurring:[], goals:[], users:[] };
   let view="board"; try{ const v=localStorage.getItem("hcb-view"); if(["board","recurring","projects"].includes(v)) view=v; }catch(e){}
   const RECUR_LABEL={day:"Daily",week:"Weekly",month:"Monthly",quarter:"Quarterly"};
+  const WEEKDAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const ordinal=n=>{ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+  function recurBadge(t){
+    if(!t.recur) return "";
+    let suf="";
+    if(t.recur==="week" && t.recurAnchor!=null) suf=" · "+WEEKDAYS[((t.recurAnchor%7)+7)%7];
+    else if((t.recur==="month"||t.recur==="quarter") && t.recurAnchor!=null) suf=" · "+(t.recurAnchor===0?"last day":ordinal(t.recurAnchor));
+    return `<span class="pill recur">🔁 ${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
+  }
   const RECUR_META=[
     {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
     {key:"week",name:"Weekly",note:"Resets every Monday",ic:"📅"},
@@ -681,7 +690,7 @@
         </div></div>
       <div class="tags">
         <span class="pill ${pr}">${prL}</span>
-        ${t.recur?`<span class="pill recur">🔁 ${RECUR_LABEL[t.recur]||"Repeats"}</span>`:""}
+        ${recurBadge(t)}
         ${dueP}
         ${t.project?`<span class="pill">${esc(t.project)}</span>`:""}
         ${who?`<span class="pill who">${esc(who)}</span>`:""}
@@ -838,14 +847,19 @@
         ${otherOpts?`<div class="field"><label>Pass this chore <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— reassign it and dump the 💩 on a teammate (they get pinged)</span></label>
           <div style="display:flex;gap:8px"><select class="in" id="tPassTo"><option value="">Pick a teammate…</option>${otherOpts}</select>
           <button class="btn ghost sm" id="tPass" type="button" style="white-space:nowrap">Pass 💩</button></div></div>`:""}
-        <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— recurring tasks move to the Recurring board</span></label>
+        <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— it auto-unchecks each cycle</span></label>
           <div class="seg" id="tRecur">
             <button data-v="" class="${!t.recur?"on":""}">Doesn't repeat</button>
             <button data-v="day" class="${t.recur==="day"?"on":""}">Daily</button>
             <button data-v="week" class="${t.recur==="week"?"on":""}">Weekly</button>
             <button data-v="month" class="${t.recur==="month"?"on":""}">Monthly</button>
             <button data-v="quarter" class="${t.recur==="quarter"?"on":""}">Quarterly</button>
-          </div></div>
+          </div>
+          <div id="tAnchorWrap" style="margin-top:8px" hidden>
+            <label id="tAnchorLabel" style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;display:block;margin-bottom:5px">On</label>
+            <select class="in" id="tAnchor" style="max-width:240px"></select>
+          </div>
+        </div>
         <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
         <div class="dustbox"><div class="hd">🌫️ Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
           <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
@@ -863,8 +877,27 @@
 
     let prio=t.priority;
     $("#tPrio").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; document.querySelectorAll("#tPrio button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); prio=b.dataset.v; };
-    let recur=t.recur||"";
-    $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); };
+    let recur=t.recur||"", anchor=(t.recurAnchor==null?null:t.recurAnchor);
+    function anchorOptions(r,cur){
+      if(r==="week") return WEEKDAYS.map((d,i)=>`<option value="${i}" ${cur==i?"selected":""}>${d}</option>`).join("");
+      let o=`<option value="0" ${cur===0?"selected":""}>Last day</option>`;
+      for(let d=1;d<=31;d++) o+=`<option value="${d}" ${cur==d?"selected":""}>${ordinal(d)}</option>`;
+      return o;
+    }
+    function updateAnchorUI(){
+      const wrap=$("#tAnchorWrap"), sel=$("#tAnchor"), lbl=$("#tAnchorLabel");
+      if(recur==="week"||recur==="month"||recur==="quarter"){
+        let cur=anchor; if(cur==null) cur = recur==="week" ? ((new Date().getDay()+6)%7) : 1;
+        lbl.textContent = recur==="week" ? "On which weekday" : recur==="quarter" ? "Day of the quarter's first month" : "Day of the month";
+        sel.innerHTML=anchorOptions(recur,cur);
+        anchor=parseInt(sel.value,10);
+        wrap.hidden=false;
+      } else { wrap.hidden=true; anchor=null; }
+    }
+    $("#tAnchor").onchange=()=>{ anchor=parseInt($("#tAnchor").value,10); };
+    $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; anchor=null;
+      document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); updateAnchorUI(); };
+    updateAnchorUI();
     const passBtn=$("#tPass"); if(passBtn) passBtn.onclick=()=>{ const to=$("#tPassTo").value; if(!to){ toast("Pick a teammate first"); return; } closeSheet(); mutate(()=>api("POST","/api/tasks/"+t.id+"/pass",{toUserId:to})); toast("💩 Chore passed!"); };
     let dust=t.dust; const dn=$("#tDustN");
     $("#tDustUp").onclick=()=>{ dust++; dn.textContent=dust; };
@@ -882,7 +915,7 @@
     $("#tSave").onclick=()=>{
       const body={ title:$("#tTitle").value.trim(), notes:$("#tDesc").value, priority:prio, dust,
         dueDate:$("#tDue").value||"", project:$("#tProj").value.trim(),
-        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null, recur };
+        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null, recur, recurAnchor:(recur?anchor:null) };
       closeSheet(); mutate(()=>api("PATCH","/api/tasks/"+t.id,body));
     };
     if(isNew) setTimeout(()=>{ const i=$("#tTitle"); if(i) i.focus(); },30);

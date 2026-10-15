@@ -129,11 +129,11 @@ function allGoals() {
 
 // Uncheck a recurring task when its period (day/week/month/quarter) rolls over.
 function resetRecurringIfNeeded() {
-  const rows = db.prepare("SELECT id,recur,recur_reset FROM tasks WHERE IFNULL(recur,'')<>''").all();
+  const rows = db.prepare("SELECT id,recur,recur_reset,recur_anchor FROM tasks WHERE IFNULL(recur,'')<>''").all();
   let changed = false;
   const tx = db.transaction(() => {
     for (const t of rows) {
-      const k = recurKey(t.recur);
+      const k = recurKey(t.recur, t.recur_anchor);
       if (k && t.recur_reset !== k) {
         db.prepare("UPDATE tasks SET done=0, recur_reset=? WHERE id=?").run(k, t.id);
         changed = true;
@@ -160,6 +160,7 @@ app.get("/api/board", requireAuth, (req, res) => {
     id: t.id, title: t.title, notes: t.notes, done: !!t.done, dust: t.dust,
     priority: t.priority, dueDate: t.due_date || "", project: t.project,
     assigneeId: t.assignee_id, goalId: t.goal_id || "", recur: t.recur || "",
+    recurAnchor: (t.recur_anchor == null ? null : t.recur_anchor),
     reactions: rxByTask[t.id] ? Object.values(rxByTask[t.id]) : []
   });
   const byCol = {};
@@ -268,7 +269,8 @@ app.patch("/api/tasks/:id", requireAuth, (req, res) => {
     goal_id: t.goal_id,
     assignee_id: t.assignee_id,
     recur: t.recur || "",
-    recur_reset: t.recur_reset || ""
+    recur_reset: t.recur_reset || "",
+    recur_anchor: (t.recur_anchor == null ? null : t.recur_anchor)
   };
   if (b.goalId !== undefined) {
     f.goal_id = b.goalId ? String(b.goalId) : null;
@@ -278,12 +280,21 @@ app.patch("/api/tasks/:id", requireAuth, (req, res) => {
     f.assignee_id = b.assigneeId ? String(b.assigneeId) : null;
     if (f.assignee_id && !db.prepare("SELECT 1 FROM users WHERE id=?").get(f.assignee_id)) f.assignee_id = null;
   }
+  // recurrence + its anchor (weekday / day-of-month) — recompute the reset key when either changes
+  let recurChanged = false;
   if (b.recur !== undefined) {
     const v = b.recur && RECURS.includes(b.recur) ? b.recur : "";
-    if (v !== (t.recur || "")) { f.recur = v; f.recur_reset = v ? recurKey(v) : ""; }
+    if (v !== (t.recur || "")) { f.recur = v; recurChanged = true; }
   }
+  if (b.recurAnchor !== undefined) {
+    let a = b.recurAnchor;
+    a = (a === null || a === "" ) ? null : Math.max(0, Math.min(31, parseInt(a, 10) || 0));
+    if (a !== f.recur_anchor) { f.recur_anchor = a; recurChanged = true; }
+  }
+  if (recurChanged) f.recur_reset = f.recur ? recurKey(f.recur, f.recur_anchor) : "";
+  if (!f.recur) f.recur_anchor = null;
   db.prepare(`UPDATE tasks SET title=@title,notes=@notes,dust=@dust,priority=@priority,due_date=@due_date,
-              project=@project,goal_id=@goal_id,assignee_id=@assignee_id,recur=@recur,recur_reset=@recur_reset,updated_at=@now
+              project=@project,goal_id=@goal_id,assignee_id=@assignee_id,recur=@recur,recur_reset=@recur_reset,recur_anchor=@recur_anchor,updated_at=@now
               WHERE id=@id`).run({ ...f, now: new Date().toISOString(), id: t.id });
   broadcast(); res.json({ ok: true });
 });
