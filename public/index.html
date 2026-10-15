@@ -149,11 +149,10 @@
   .card .ttl{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.35;cursor:pointer;word-break:break-word}
   .card.done .ttl{text-decoration:line-through;text-decoration-color:var(--muted-2)}
   /* compact meta line: due · recur · project … avatar */
-  .card-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--muted);line-height:1.2}
-  .m-item{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
-  .m-recur{color:var(--accent-bright);font-weight:600}
-  .m-proj{color:var(--muted-2);max-width:130px;overflow:hidden;text-overflow:ellipsis}
-  .m-proj::before{content:"•";margin-right:5px;color:var(--line-strong)}
+  .card-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11px;color:var(--muted);line-height:1.2}
+  .m-item{display:inline-flex;align-items:center;white-space:nowrap;color:var(--muted);font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .m-item + .m-item::before{content:"·";margin-right:7px;color:var(--line-strong);font-weight:400}
+  .m-recur .ic{margin-right:4px;color:var(--muted-2)}
   .m-due.overdue{color:#ff8f78;font-weight:600}
   .m-due.today{color:var(--gold);font-weight:600}
   .m-spacer{flex:1 1 0;min-width:4px}
@@ -426,7 +425,7 @@
     let suf="";
     if(t.recur==="week" && t.recurAnchor!=null) suf=" "+WEEKDAYS[((t.recurAnchor%7)+7)%7];
     else if((t.recur==="month"||t.recur==="quarter") && t.recurAnchor!=null) suf=" "+(t.recurAnchor===0?"last":ordinal(t.recurAnchor));
-    return `<span class="m-item m-recur">🔁 ${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
+    return `<span class="m-item m-recur"><span class="ic">↻</span>${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
   }
   const RECUR_META=[
     {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
@@ -689,7 +688,7 @@
     el.title=(t.priority==="high"?"High":t.priority==="low"?"Low":"Medium")+" priority";
     const who=t.assigneeId?userName(t.assigneeId):"";
     const dm=dueMeta(t.dueDate);
-    const dueM=dm?`<span class="m-item m-due ${(!t.done&&dm.diff<0)?"overdue":dm.diff===0?"today":""}">📅 ${dm.diff===0?"Today":esc(dm.label)}</span>`:"";
+    const dueM=dm?`<span class="m-item m-due ${(!t.done&&dm.diff<0)?"overdue":dm.diff===0?"today":""}">${dm.diff===0?"Today":esc(dm.label)}</span>`:"";
     const projM=t.project?`<span class="m-item m-proj" title="${esc(t.project)}">${esc(t.project)}</span>`:"";
     const metaInner=dueM+recurBadge(t)+projM;
     const metaRow=(metaInner||who)?`<div class="card-meta">${metaInner}<span class="m-spacer"></span>${who?`<span class="avatar" title="${esc(who)}">${esc(initialsOf(who))}</span>`:""}</div>`:"";
@@ -698,7 +697,7 @@
         <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
         <div class="dust-ctl">
           <button data-dust="-1" data-t="${t.id}" aria-label="Less dust">−</button>
-          <span class="n">${t.dust}<span title="dust">🌫️</span></span>
+          <span class="n" title="dust">${t.dust}</span>
           <button data-dust="1" data-t="${t.id}" aria-label="More dust">+</button>
         </div></div>
       ${metaRow}
@@ -752,7 +751,7 @@
     if(!list.length){ toast("No open chores to pass 🎉"); return; }
     const pop=document.createElement("div"); pop.className="rx-pop pass-pop"; pop.id="rxPop";
     pop.innerHTML=`<div class="pass-h">Pass a chore to ${esc(toName||"them")} 💩</div>`
-      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust}🌫️</span></button>`).join("");
+      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust} dust</span></button>`).join("");
     document.body.appendChild(pop);
     const r=anchor.getBoundingClientRect();
     pop.style.position="fixed"; pop.style.zIndex=50;
@@ -868,7 +867,7 @@
           </div>
         </div>
         <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
-        <div class="dustbox"><div class="hd">🌫️ Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
+        <div class="dustbox"><div class="hd">Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
           <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
           <p>Dust bunnies pile up at the bottom of the board. Finish the task and its dust gets swept away.</p></div>
         <div class="timerbox"><div class="hd">⏱️ Task timer</div>
@@ -1063,7 +1062,7 @@
   function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
   function syncDust(){
     const total=openDustTotal();
-    $("#dustCount").innerHTML=`<b>${total}</b> 🌫️ dust to sweep`;
+    $("#dustCount").innerHTML=`<b>${total}</b> dust to sweep`;
     const want=Math.min(42,Math.ceil(total/2));
     while(bunnies.length<want){ const b=document.createElement("div"); b.className="dustbunny";
       b.innerHTML='<div class="body"></div><span class="eye1"></span><span class="eye2"></span>';
