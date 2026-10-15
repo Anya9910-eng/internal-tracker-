@@ -123,7 +123,7 @@
   .pill.p-med{background:var(--gold-soft);color:var(--gold)}
   .pill.p-low{background:rgba(50,192,138,.14);color:var(--good)}
   .pill.who{background:var(--accent-soft);color:var(--accent-bright)}
-  .pill.link{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .pill.overdue{background:var(--crit-soft);color:#ff8f78}
   .dust-ctl{display:flex;align-items:center;gap:7px;margin-left:auto}
   .dust-ctl button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:15px;line-height:1;display:grid;place-items:center}
   .dust-ctl button:hover{border-color:var(--line-strong)}
@@ -179,6 +179,9 @@
   .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:7px}
   .emoji-grid button{aspect-ratio:1;border:1px solid var(--line);background:var(--bg-2);border-radius:10px;font-size:19px;display:grid;place-items:center;transition:border-color .12s}
   .emoji-grid button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+  .emoji-pick{display:flex;flex-wrap:wrap;gap:6px}
+  .emoji-pick button{width:38px;height:38px;border:1px solid var(--line);background:var(--bg-2);border-radius:9px;font-size:18px;display:grid;place-items:center;transition:border-color .12s}
+  .emoji-pick button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
   .chkline{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px}
   .chkline .box{flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:2px solid var(--line-strong);display:grid;place-items:center;font-size:12px;color:#fff;margin-top:1px}
   .chkline .box.on{background:var(--accent);border-color:var(--accent)}
@@ -277,7 +280,7 @@
         <span><span class="pn" id="profName">You</span><span class="ps" id="profStreakWrap"><span id="profStreak">0</span>-day streak 🔥</span></span>
       </button>
     </header>
-    <section class="goal" id="goalPanel"></section>
+    <section id="goalWrap" style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px"></section>
     <div class="board-head">
       <span class="eyebrow">Shift board</span><h2>This week</h2>
       <span class="hint">Finishing a task sweeps its dust away • everyone sees the same board live</span>
@@ -309,7 +312,7 @@
   }
 
   /* ---------- state ---------- */
-  let state = { me:null, columns:[], goal:null, users:[] };
+  let state = { me:null, columns:[], goals:[], users:[] };
   let loadTimer=null, es=null;
 
   /* ---------- auth screen ---------- */
@@ -375,13 +378,13 @@
   async function loadBoard(){
     try{
       const d=await api("GET","/api/board");
-      state.me=d.me; state.columns=d.columns; state.goal=d.goal; state.users=d.users;
-      renderProfile(); renderGoal(); renderBoard(); syncDust();
+      state.me=d.me; state.columns=d.columns; state.goals=d.goals||[]; state.users=d.users;
+      renderProfile(); renderGoals(); renderBoard(); syncDust();
     }catch(err){ if(err.status===401) showAuth(); }
   }
 
   /* ---------- world clocks ---------- */
-  const CITIES=[{name:"McLean HQ",tz:"America/New_York"},{name:"London",tz:"Europe/London"},{name:"Dubai",tz:"Asia/Dubai"},{name:"Singapore",tz:"Asia/Singapore"}];
+  const CITIES=[{name:"McLean HQ",tz:"America/New_York"},{name:"London",tz:"Europe/London"},{name:"Dubai",tz:"Asia/Dubai"},{name:"Riyadh",tz:"Asia/Riyadh"},{name:"Egypt",tz:"Africa/Cairo"}];
   let clockInt=null;
   function offsetLabel(tz){ try{ const p=new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"shortOffset"}).formatToParts(new Date()); const o=p.find(x=>x.type==="timeZoneName"); return o?o.value.replace("GMT","UTC"):""; }catch(e){ return ""; } }
   function startClocks(){
@@ -415,18 +418,12 @@
 
   /* ---------- goal ---------- */
   function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }catch(e){ return iso; } }
-  function renderGoal(){
-    const el=$("#goalPanel"), g=state.goal;
-    if(!g){
-      el.innerHTML=`<div class="goal-head"><span class="eyebrow">Road to the goal</span></div>
-        <div class="goal-empty"><h2>Set a shared goal</h2>
-        <p>Give the crew a goal with a deadline. Your team marker travels the timeline toward the finish as linked tasks get closed — and reward chests unlock along the way.</p>
-        <button class="btn" id="setGoalBtn">Set a goal</button></div>`;
-      $("#setGoalBtn").onclick=()=>openGoal(); return;
-    }
+  function dueMeta(iso){ if(!iso) return null; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return null; const today=new Date(); today.setHours(0,0,0,0); const diff=Math.round((d-today)/864e5); return {label:d.toLocaleDateString("en-US",{month:"short",day:"numeric"}),diff}; }
+  function goalPanelHtml(g,single){
     const chests=(g.rewards||[]).filter(r=>r.label&&r.label.trim()).map(r=>({...r,open:g.pct>=r.pct}));
-    el.innerHTML=`<div class="goal-head"><span class="eyebrow">Road to the goal</span>
-      <button class="btn ghost sm" id="editGoalBtn" style="margin-left:auto">Edit</button></div>
+    return `<div class="goal">
+      <div class="goal-head"><span class="eyebrow">Road to the goal</span>
+        <button class="btn ghost sm" data-editgoal="${g.id}" style="margin-left:auto">Edit</button></div>
       <div class="gtitle"><h2>${esc(g.title||"Goal")}</h2>
         <span class="meta"><b>${g.done}</b> of <b>${g.total}</b> linked tasks done · <b>${g.total-g.done}</b> to go</span></div>
       <div class="track">
@@ -436,8 +433,22 @@
         <div class="finish">${esc(g.finish_emoji||"🏆")}</div>
         <div class="dates"><span>${fmtDate(g.start)}</span><span>${fmtDate(g.deadline)}</span></div>
       </div>
-      <div class="rewards">${chests.length?chests.map(c=>`<span class="reward ${c.open?"open":""}"><span class="pct">${c.open?"🎁":"🔒"} ${c.pct}%</span> · ${esc(c.label)}</span>`).join(""):`<span class="reward">No reward chests yet — add some when you edit the goal</span>`}</div>`;
-    $("#editGoalBtn").onclick=()=>openGoal();
+      <div class="rewards">${chests.length?chests.map(c=>`<span class="reward ${c.open?"open":""}"><span class="pct">${c.open?"🎁":"🔒"} ${c.pct}%</span> · ${esc(c.label)}</span>`).join(""):`<span class="reward">No reward chests yet — add some when you edit the goal</span>`}</div>
+    </div>`;
+  }
+  function renderGoals(){
+    const el=$("#goalWrap"), goals=state.goals||[];
+    if(goals.length===0){
+      el.innerHTML=`<div class="goal"><div class="goal-head"><span class="eyebrow">Road to the goal</span></div>
+        <div class="goal-empty"><h2>Set a shared goal</h2>
+        <p>Give the crew a goal with a deadline. Your team marker travels the timeline toward the finish as linked tasks get closed — and reward chests unlock along the way. You can run several goals at once.</p>
+        <button class="btn" data-newgoal>Set a goal</button></div></div>`;
+    } else {
+      el.innerHTML=goals.map(g=>goalPanelHtml(g)).join("")
+        +`<button class="addtask" data-newgoal style="align-self:flex-start">+ Add another goal</button>`;
+    }
+    el.querySelectorAll("[data-newgoal]").forEach(b=>b.onclick=()=>openGoal());
+    el.querySelectorAll("[data-editgoal]").forEach(b=>b.onclick=()=>openGoal(b.dataset.editgoal));
   }
 
   /* ---------- board ---------- */
@@ -468,6 +479,8 @@
     const pr=t.priority==="high"?"p-high":t.priority==="low"?"p-low":"p-med";
     const prL=t.priority==="high"?"High":t.priority==="low"?"Low":"Medium";
     const who=t.assigneeId?userName(t.assigneeId):"";
+    const dm=dueMeta(t.dueDate);
+    const dueP=dm?`<span class="pill due ${(!t.done&&dm.diff<0)?"overdue":""}">📅 ${dm.diff===0?"Due today":dm.diff<0?("Overdue · "+dm.label):("Due "+dm.label)}</span>`:"";
     el.innerHTML=`<div class="card-top">
         <button class="chk ${t.done?"on":""}" data-done="${t.id}" aria-label="Toggle done">${t.done?"✓":""}</button>
         <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
@@ -478,10 +491,9 @@
         </div></div>
       <div class="tags">
         <span class="pill ${pr}">${prL}</span>
-        ${t.urgency?`<span class="pill">${esc(t.urgency)}</span>`:""}
+        ${dueP}
         ${t.project?`<span class="pill">${esc(t.project)}</span>`:""}
         ${who?`<span class="pill who">${esc(who)}</span>`:""}
-        ${t.link?`<span class="pill link">🔗 link</span>`:""}
       </div>`;
     return el;
   }
@@ -523,7 +535,7 @@
   /* ---------- task editor ---------- */
   function openTask(id,isNew){
     const t=findTask(id); if(!t) return;
-    const goalOpts = state.goal ? `<option value="1" ${t.countsGoal?"selected":""}>${esc(state.goal.title)}</option>` : "";
+    const goalOpts = (state.goals||[]).map(g=>`<option value="${g.id}" ${t.goalId===g.id?"selected":""}>${esc(g.title)}</option>`).join("");
     const teamOpts = `<option value="">Unassigned</option>`+state.users.map(u=>`<option value="${u.id}" ${t.assigneeId===u.id?"selected":""}>${esc(u.name)}</option>`).join("");
     openSheet(`<div class="sheet wide" role="dialog" aria-modal="true" aria-label="Task">
       <div class="sheet-head"><h2>${isNew?"New task":"Task"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
@@ -535,16 +547,13 @@
             <button data-v="low" class="${t.priority==="low"?"on":""}">Low</button>
             <button data-v="med" class="${t.priority==="med"?"on":""}">Medium</button>
             <button data-v="high" class="${t.priority==="high"?"on":""}">High</button></div></div>
-          <div class="field"><label for="tUrg">Urgency</label><input class="in" id="tUrg" value="${esc(t.urgency)}" placeholder="e.g. Today, This week"></div>
+          <div class="field"><label for="tDue">Due date</label><input class="in" id="tDue" type="date" value="${esc(t.dueDate||'')}"></div>
         </div>
         <div class="row2">
           <div class="field"><label for="tProj">Project / area</label><input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
           <div class="field"><label for="tWho">Assignee</label><select class="in" id="tWho">${teamOpts}</select></div>
         </div>
-        <div class="row2">
-          <div class="field"><label for="tLink">Attach a link</label><input class="in" id="tLink" value="${esc(t.link)}" placeholder="Doc / sheet URL"></div>
-          <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
-        </div>
+        <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
         <div class="dustbox"><div class="hd">🌫️ Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
           <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
           <p>Dust bunnies pile up at the bottom of the board. Finish the task and its dust gets swept away.</p></div>
@@ -576,8 +585,8 @@
     $("#tDel").onclick=()=>{ stopTT(); closeSheet(); mutate(()=>api("DELETE","/api/tasks/"+t.id)); };
     $("#tSave").onclick=()=>{
       const body={ title:$("#tTitle").value.trim(), notes:$("#tDesc").value, priority:prio, dust,
-        urgency:$("#tUrg").value.trim(), project:$("#tProj").value.trim(),
-        assigneeId:$("#tWho").value||null, link:$("#tLink").value.trim(), countsGoal:!!$("#tGoal").value };
+        dueDate:$("#tDue").value||"", project:$("#tProj").value.trim(),
+        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null };
       closeSheet(); mutate(()=>api("PATCH","/api/tasks/"+t.id,body));
     };
     if(isNew) setTimeout(()=>{ const i=$("#tTitle"); if(i) i.focus(); },30);
@@ -586,33 +595,42 @@
   function stopTT(){ taskTimer.run=false; clearInterval(taskTimerInt); taskTimerInt=null; }
 
   /* ---------- goal editor ---------- */
-  function openGoal(){
-    const g=state.goal||{title:"",start:todayKey(),deadline:addDays(todayKey(),21),team_emoji:"🛎️",finish_emoji:"🏆",rewards:[{label:"",pct:25},{label:"",pct:50},{label:"",pct:75}]};
+  const TEAM_MARKERS=["🛎️","🧹","🚐","🏃","🧑‍🤝‍🧑","🚀","🧳","👟","⭐","🧑‍🍳"];
+  const FINISH_MARKERS=["🏆","🏁","🎯","🥇","💎","🎉","⭐","🏅","🎊","🌟"];
+  function openGoal(id){
+    const existing = id ? (state.goals||[]).find(x=>x.id===id) : null;
+    const g = existing || {title:"",start:todayKey(),deadline:addDays(todayKey(),21),team_emoji:"🛎️",finish_emoji:"🏆",rewards:[{label:"",pct:25},{label:"",pct:50},{label:"",pct:75}]};
     const r=[0,1,2].map(i=>(g.rewards&&g.rewards[i])||{label:"",pct:[25,50,75][i]});
+    let teamEmoji=g.team_emoji, finishEmoji=g.finish_emoji;
     openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Goal">
-      <div class="sheet-head"><h2>${state.goal?"Edit goal":"New goal"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
+      <div class="sheet-head"><h2>${existing?"Edit goal":"New goal"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
       <div class="sheet-body">
         <div class="field"><label for="gTitle">Goal</label><input class="in" id="gTitle" value="${esc(g.title)}" placeholder="e.g. Q4 Guest Satisfaction Push"></div>
         <div class="row2"><div class="field"><label for="gStart">Start</label><input class="in" id="gStart" type="date" value="${g.start}"></div>
           <div class="field"><label for="gEnd">Deadline</label><input class="in" id="gEnd" type="date" value="${g.deadline}"></div></div>
-        <div class="row2"><div class="field"><label for="gTeam">Team marker</label><input class="in" id="gTeam" value="${esc(g.team_emoji)}" maxlength="4" placeholder="🛎️"></div>
-          <div class="field"><label for="gFin">Finish marker</label><input class="in" id="gFin" value="${esc(g.finish_emoji)}" maxlength="4" placeholder="🏆"></div></div>
+        <div class="row2"><div class="field"><label>Team marker</label><div class="emoji-pick" id="gTeam">${TEAM_MARKERS.map(e=>`<button type="button" data-em="${e}" class="${g.team_emoji===e?"on":""}">${e}</button>`).join("")}</div></div>
+          <div class="field"><label>Finish marker</label><div class="emoji-pick" id="gFin">${FINISH_MARKERS.map(e=>`<button type="button" data-em="${e}" class="${g.finish_emoji===e?"on":""}">${e}</button>`).join("")}</div></div></div>
         <div class="field"><label>Reward chests along the way</label>
           <div style="display:flex;flex-direction:column;gap:8px">
           ${r.map((x,i)=>`<div style="display:flex;gap:8px"><input class="in gR" data-i="${i}" value="${esc(x.label)}" placeholder="Reward (leave blank for no chest)"><input class="in gP" data-i="${i}" type="number" min="1" max="100" value="${x.pct}" style="max-width:88px"> <span style="align-self:center;color:var(--muted)">%</span></div>`).join("")}
           </div>
-          <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">A chest opens once that % of the goal's linked tasks are done. Link a task to the goal from its "Counts toward goal" field — progress is the share of linked tasks completed.</p></div>
+          <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">A chest opens once that % of the goal's linked tasks are done. Link a task to a goal from its "Counts toward goal" field — progress is the share of linked tasks completed.</p></div>
         <div style="display:flex;gap:10px;margin-top:4px">
-          ${state.goal?`<button class="btn danger sm" id="gDel">Remove goal</button>`:""}
+          ${existing?`<button class="btn danger sm" id="gDel">Remove goal</button>`:""}
           <button class="btn gold" id="gSave" style="margin-left:auto">Save goal</button></div>
       </div></div>`);
+    $("#gTeam").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; teamEmoji=b.dataset.em;
+      document.querySelectorAll("#gTeam button").forEach(x=>x.classList.toggle("on",x.dataset.em===teamEmoji)); };
+    $("#gFin").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; finishEmoji=b.dataset.em;
+      document.querySelectorAll("#gFin button").forEach(x=>x.classList.toggle("on",x.dataset.em===finishEmoji)); };
     $("#gSave").onclick=()=>{
       const rewards=[0,1,2].map(i=>({label:$(`.gR[data-i="${i}"]`).value, pct:+$(`.gP[data-i="${i}"]`).value||((i+1)*25)}));
       const body={ title:$("#gTitle").value.trim()||"Goal", start:$("#gStart").value, deadline:$("#gEnd").value,
-        teamEmoji:$("#gTeam").value.trim()||"🛎️", finishEmoji:$("#gFin").value.trim()||"🏆", rewards };
-      closeSheet(); mutate(()=>api("PUT","/api/goal",body));
+        teamEmoji, finishEmoji, rewards };
+      closeSheet();
+      mutate(()=> existing ? api("PATCH","/api/goals/"+existing.id,body) : api("POST","/api/goals",body));
     };
-    const del=$("#gDel"); if(del) del.onclick=()=>{ closeSheet(); mutate(()=>api("DELETE","/api/goal")); };
+    const del=$("#gDel"); if(del) del.onclick=()=>{ closeSheet(); mutate(()=>api("DELETE","/api/goals/"+existing.id)); };
   }
   function todayKey(){ return new Date().toISOString().slice(0,10); }
   function addDays(iso,n){ const d=new Date(iso); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }

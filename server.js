@@ -104,13 +104,18 @@ app.patch("/api/me", requireAuth, (req, res) => {
 });
 
 /* ---------------- board read ---------------- */
-function goalProgress() {
-  const g = db.prepare("SELECT * FROM goal WHERE id='main'").get();
-  if (!g) return null;
-  const linked = db.prepare("SELECT done FROM tasks WHERE counts_goal=1").all();
+function goalProgress(g) {
+  const linked = db.prepare("SELECT done FROM tasks WHERE goal_id=?").all(g.id);
   const total = linked.length;
   const done = linked.filter(t => t.done).length;
-  return { ...g, rewards: auth.safeJson(g.rewards, []), done, total, pct: total ? Math.round(done / total * 100) : 0 };
+  return {
+    id: g.id, title: g.title, start: g.start, deadline: g.deadline,
+    team_emoji: g.team_emoji, finish_emoji: g.finish_emoji,
+    rewards: auth.safeJson(g.rewards, []), done, total, pct: total ? Math.round(done / total * 100) : 0
+  };
+}
+function allGoals() {
+  return db.prepare("SELECT * FROM goals ORDER BY position, created_at, rowid").all().map(goalProgress);
 }
 
 app.get("/api/board", requireAuth, (req, res) => {
@@ -122,8 +127,8 @@ app.get("/api/board", requireAuth, (req, res) => {
     if (!byCol[t.column_id]) return;
     byCol[t.column_id].push({
       id: t.id, title: t.title, notes: t.notes, done: !!t.done, dust: t.dust,
-      priority: t.priority, urgency: t.urgency, project: t.project,
-      assigneeId: t.assignee_id, link: t.link, countsGoal: !!t.counts_goal
+      priority: t.priority, dueDate: t.due_date || "", project: t.project,
+      assigneeId: t.assignee_id, goalId: t.goal_id || ""
     });
   });
   const users = db.prepare("SELECT id,name,emojis,status,show_streak,streak_days FROM users ORDER BY name").all()
@@ -132,7 +137,7 @@ app.get("/api/board", requireAuth, (req, res) => {
   res.json({
     me: auth.publicUser(req.user),
     columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
-    goal: goalProgress(),
+    goals: allGoals(),
     users
   });
 });
@@ -189,23 +194,31 @@ app.patch("/api/tasks/:id", requireAuth, (req, res) => {
   const t = db.prepare("SELECT * FROM tasks WHERE id=?").get(req.params.id);
   if (!t) return res.status(404).json({ error: "Task not found" });
   const b = req.body || {};
+  let due = t.due_date;
+  if (b.dueDate != null) {
+    due = String(b.dueDate).trim();
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) due = "";
+  }
   const f = {
     title: b.title != null ? String(b.title).slice(0, 300) : t.title,
     notes: b.notes != null ? String(b.notes).slice(0, 4000) : t.notes,
     dust: b.dust != null ? Math.max(0, Math.min(99, parseInt(b.dust, 10) || 0)) : t.dust,
     priority: b.priority != null && PRIOS.has(b.priority) ? b.priority : t.priority,
-    urgency: b.urgency != null ? String(b.urgency).slice(0, 60) : t.urgency,
+    due_date: due,
     project: b.project != null ? String(b.project).slice(0, 60) : t.project,
-    link: b.link != null ? String(b.link).slice(0, 600) : t.link,
-    counts_goal: b.countsGoal != null ? (b.countsGoal ? 1 : 0) : t.counts_goal,
+    goal_id: t.goal_id,
     assignee_id: t.assignee_id
   };
+  if (b.goalId !== undefined) {
+    f.goal_id = b.goalId ? String(b.goalId) : null;
+    if (f.goal_id && !db.prepare("SELECT 1 FROM goals WHERE id=?").get(f.goal_id)) f.goal_id = null;
+  }
   if (b.assigneeId !== undefined) {
     f.assignee_id = b.assigneeId ? String(b.assigneeId) : null;
     if (f.assignee_id && !db.prepare("SELECT 1 FROM users WHERE id=?").get(f.assignee_id)) f.assignee_id = null;
   }
-  db.prepare(`UPDATE tasks SET title=@title,notes=@notes,dust=@dust,priority=@priority,urgency=@urgency,
-              project=@project,link=@link,counts_goal=@counts_goal,assignee_id=@assignee_id,updated_at=@now
+  db.prepare(`UPDATE tasks SET title=@title,notes=@notes,dust=@dust,priority=@priority,due_date=@due_date,
+              project=@project,goal_id=@goal_id,assignee_id=@assignee_id,updated_at=@now
               WHERE id=@id`).run({ ...f, now: new Date().toISOString(), id: t.id });
   broadcast(); res.json({ ok: true });
 });
@@ -270,29 +283,46 @@ app.delete("/api/tasks/:id", requireAuth, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 
-/* ---------------- goal ---------------- */
-app.put("/api/goal", requireAuth, (req, res) => {
-  const b = req.body || {};
-  const rewards = Array.isArray(b.rewards) ? b.rewards.slice(0, 3).map(r => ({
+/* ---------------- goals (multiple) ---------------- */
+function sanitizeRewards(arr) {
+  return Array.isArray(arr) ? arr.slice(0, 3).map(r => ({
     label: String(r.label || "").slice(0, 80),
     pct: Math.max(1, Math.min(100, parseInt(r.pct, 10) || 25))
   })) : [];
-  db.prepare(`INSERT INTO goal (id,title,start,deadline,team_emoji,finish_emoji,rewards)
-    VALUES ('main',@title,@start,@deadline,@team,@finish,@rewards)
+}
+function writeGoal(id, b, position, existing) {
+  db.prepare(`INSERT INTO goals (id,title,start,deadline,team_emoji,finish_emoji,rewards,position,created_at)
+    VALUES (@id,@title,@start,@deadline,@team,@finish,@rewards,@position,@created)
     ON CONFLICT(id) DO UPDATE SET title=@title,start=@start,deadline=@deadline,
       team_emoji=@team,finish_emoji=@finish,rewards=@rewards`).run({
+    id,
     title: String(b.title || "Goal").slice(0, 120),
-    start: String(b.start || todayKey()),
-    deadline: String(b.deadline || addDays(todayKey(), 21)),
-    team: String(b.teamEmoji || "🛎️").slice(0, 8),
-    finish: String(b.finishEmoji || "🏆").slice(0, 8),
-    rewards: JSON.stringify(rewards)
+    start: String(b.start || (existing && existing.start) || todayKey()),
+    deadline: String(b.deadline || (existing && existing.deadline) || addDays(todayKey(), 21)),
+    team: String(b.teamEmoji || (existing && existing.team_emoji) || "🛎️").slice(0, 8),
+    finish: String(b.finishEmoji || (existing && existing.finish_emoji) || "🏆").slice(0, 8),
+    rewards: JSON.stringify(b.rewards !== undefined ? sanitizeRewards(b.rewards) : auth.safeJson(existing && existing.rewards, [])),
+    position, created: new Date().toISOString()
   });
+}
+
+app.post("/api/goals", requireAuth, (req, res) => {
+  const max = db.prepare("SELECT COALESCE(MAX(position),-1) m FROM goals").get().m;
+  const id = uid();
+  writeGoal(id, req.body || {}, max + 1, null);
+  broadcast(); res.json({ id });
+});
+
+app.patch("/api/goals/:id", requireAuth, (req, res) => {
+  const g = db.prepare("SELECT * FROM goals WHERE id=?").get(req.params.id);
+  if (!g) return res.status(404).json({ error: "Goal not found" });
+  writeGoal(g.id, req.body || {}, g.position, g);
   broadcast(); res.json({ ok: true });
 });
 
-app.delete("/api/goal", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM goal WHERE id='main'").run();
+app.delete("/api/goals/:id", requireAuth, (req, res) => {
+  db.prepare("DELETE FROM goals WHERE id=?").run(req.params.id);
+  db.prepare("UPDATE tasks SET goal_id=NULL WHERE goal_id=?").run(req.params.id);
   broadcast(); res.json({ ok: true });
 });
 
