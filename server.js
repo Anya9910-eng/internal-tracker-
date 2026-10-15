@@ -7,7 +7,7 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const { db, uid, todayKey, addDays } = require("./db");
+const { db, uid, todayKey, addDays, mondayKey } = require("./db");
 const auth = require("./auth");
 
 const app = express();
@@ -97,8 +97,9 @@ app.patch("/api/me", requireAuth, (req, res) => {
   if (Array.isArray(b.emojis)) emojis = JSON.stringify(b.emojis.slice(0, 3).map(String));
   const showStreak = b.showStreak != null ? (b.showStreak ? 1 : 0) : cur.show_streak;
   const paused = b.paused != null ? (b.paused ? 1 : 0) : cur.paused;
-  db.prepare(`UPDATE users SET name=?,status=?,emojis=?,show_streak=?,paused=? WHERE id=?`)
-    .run(name, status, emojis, showStreak, paused, cur.id);
+  const shift = b.shift != null && ["day", "night"].includes(b.shift) ? b.shift : cur.shift;
+  db.prepare(`UPDATE users SET name=?,status=?,emojis=?,show_streak=?,paused=?,shift=? WHERE id=?`)
+    .run(name, status, emojis, showStreak, paused, shift, cur.id);
   broadcast();
   res.json({ user: auth.publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(cur.id)) });
 });
@@ -118,7 +119,23 @@ function allGoals() {
   return db.prepare("SELECT * FROM goals ORDER BY position, created_at, rowid").all().map(goalProgress);
 }
 
+// Uncheck every task in weekly columns when a new week starts (Monday).
+function resetWeeklyIfNeeded() {
+  const wk = mondayKey();
+  const due = db.prepare("SELECT id FROM columns WHERE weekly=1 AND IFNULL(last_reset,'')<>?").all(wk);
+  if (!due.length) return false;
+  const tx = db.transaction(() => {
+    for (const c of due) {
+      db.prepare("UPDATE tasks SET done=0 WHERE column_id=?").run(c.id);
+      db.prepare("UPDATE columns SET last_reset=? WHERE id=?").run(wk, c.id);
+    }
+  });
+  tx();
+  return true;
+}
+
 app.get("/api/board", requireAuth, (req, res) => {
+  if (resetWeeklyIfNeeded()) broadcast();
   const cols = db.prepare("SELECT * FROM columns ORDER BY position, rowid").all();
   const tasks = db.prepare("SELECT * FROM tasks ORDER BY position, rowid").all();
   const byCol = {};
@@ -131,12 +148,12 @@ app.get("/api/board", requireAuth, (req, res) => {
       assigneeId: t.assignee_id, goalId: t.goal_id || ""
     });
   });
-  const users = db.prepare("SELECT id,name,emojis,status,show_streak,streak_days FROM users ORDER BY name").all()
+  const users = db.prepare("SELECT id,name,emojis,status,shift,show_streak,streak_days FROM users ORDER BY name").all()
     .map(u => ({ id: u.id, name: u.name, emojis: auth.safeJson(u.emojis, ["🧹"]), status: u.status || "",
-                 streakDays: u.show_streak ? u.streak_days : null }));
+                 shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null }));
   res.json({
     me: auth.publicUser(req.user),
-    columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
+    columns: cols.map(c => ({ id: c.id, name: c.name, weekly: !!c.weekly, tasks: byCol[c.id] })),
     goals: allGoals(),
     users
   });
@@ -152,9 +169,17 @@ app.post("/api/columns", requireAuth, (req, res) => {
 });
 
 app.patch("/api/columns/:id", requireAuth, (req, res) => {
-  const r = db.prepare("UPDATE columns SET name=? WHERE id=?")
-    .run(String(req.body.name || "").slice(0, 60), req.params.id);
-  if (!r.changes) return res.status(404).json({ error: "List not found" });
+  const col = db.prepare("SELECT * FROM columns WHERE id=?").get(req.params.id);
+  if (!col) return res.status(404).json({ error: "List not found" });
+  const b = req.body || {};
+  const name = b.name != null ? String(b.name).slice(0, 60) : col.name;
+  let weekly = col.weekly, lastReset = col.last_reset;
+  if (b.weekly != null) {
+    weekly = b.weekly ? 1 : 0;
+    if (weekly && !col.weekly) lastReset = mondayKey(); // start the weekly clock now; don't reset mid-week
+  }
+  db.prepare("UPDATE columns SET name=?,weekly=?,last_reset=? WHERE id=?")
+    .run(name, weekly, lastReset, req.params.id);
   broadcast(); res.json({ ok: true });
 });
 

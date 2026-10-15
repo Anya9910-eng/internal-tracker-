@@ -21,7 +21,11 @@ plus SQLite — no external services, no API keys.
   actually signed up. That's how the board knows who's on the team.
 - **Live sync** — changes broadcast over Server-Sent Events, so everyone's board updates
   in real time.
-- **World clocks** (McLean HQ, London, Dubai, Singapore) and a per-device focus timer.
+- **World clocks** (McLean HQ, London, Dubai, Riyadh, Egypt) and a per-device focus timer.
+- **Weekly recurring lists** — mark any column as "weekly" (🔁) and its tasks
+  auto-uncheck every Monday, so standing checklists reset for the new week.
+- **Day / Night shifts** — each crew member sets their shift; the crew roster
+  groups by shift and names show a ☀️ / 🌙 badge.
 - **Road to the goal** — a shared goal with a deadline, a progress timeline, and reward
   chests that unlock at % milestones.
 - **Dust** — each task has a "dust" grind rating; open dust drifts along the bottom as

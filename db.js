@@ -15,6 +15,8 @@ db.pragma("foreign_keys = ON");
 const uid = () => crypto.randomBytes(9).toString("base64url");
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const addDays = (iso, n) => { const d = new Date(iso); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// Key for "which week is it" — the date of this week's Monday. Used to reset weekly columns.
+const mondayKey = (d = new Date()) => { const x = new Date(d); const off = (x.getDay() + 6) % 7; x.setDate(x.getDate() - off); return x.toISOString().slice(0, 10); };
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -95,6 +97,12 @@ if (!taskCols.includes("due_date")) {
 if (!taskCols.includes("goal_id")) {
   db.exec("ALTER TABLE tasks ADD COLUMN goal_id TEXT");
 }
+const colCols = db.prepare("PRAGMA table_info(columns)").all().map(c => c.name);
+if (!colCols.includes("weekly")) db.exec("ALTER TABLE columns ADD COLUMN weekly INTEGER DEFAULT 0");
+if (!colCols.includes("last_reset")) db.exec("ALTER TABLE columns ADD COLUMN last_reset TEXT DEFAULT ''");
+const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+if (!userCols.includes("shift")) db.exec("ALTER TABLE users ADD COLUMN shift TEXT DEFAULT 'day'");
+
 // Migrate the old single-goal table into the multi-goal table (once).
 const goalsCount = db.prepare("SELECT COUNT(*) c FROM goals").get().c;
 if (goalsCount === 0) {
@@ -137,10 +145,30 @@ function seedIfEmpty() {
     ]]
   ];
 
+  // A standing weekly checklist that auto-unchecks every Monday.
+  const weeklyTasks = [
+    { title: "Fire alarm & extinguisher check", dust: 4, priority: "high" },
+    { title: "Deep-clean lobby glass & doors", dust: 5, priority: "med" },
+    { title: "Weekly linen inventory count", dust: 6, priority: "med" },
+    { title: "Pool & spa chemical log", dust: 3, priority: "med" },
+    { title: "Back-of-house walkthrough", dust: 4, priority: "med" },
+    { title: "Team huddle + next week's roster", dust: 2, priority: "low" }
+  ];
+
   const seed = db.transaction(() => {
+    // weekly column first so the crew sees the standing checklist up top
+    const wid = uid();
+    db.prepare("INSERT INTO columns (id,name,position,weekly,last_reset) VALUES (?,?,?,1,?)")
+      .run(wid, "Weekly recurring", 0, mondayKey());
+    weeklyTasks.forEach((t, ti) => insTask.run({
+      id: uid(), column_id: wid, title: t.title, done: 0, dust: t.dust,
+      priority: t.priority, due_date: "", project: "Recurring",
+      counts_goal: 0, goal_id: null, position: ti, now
+    }));
+
     cols.forEach(([name, tasks], ci) => {
       const cid = uid();
-      insCol.run(cid, name, ci);
+      insCol.run(cid, name, ci + 1);
       tasks.forEach((t, ti) => insTask.run({
         id: uid(), column_id: cid, title: t.title, done: t.done ? 1 : 0, dust: t.dust,
         priority: t.priority, due_date: t.due_date, project: t.project,
@@ -162,4 +190,4 @@ function seedIfEmpty() {
 }
 seedIfEmpty();
 
-module.exports = { db, uid, todayKey, addDays, DB_PATH };
+module.exports = { db, uid, todayKey, addDays, mondayKey, DB_PATH };

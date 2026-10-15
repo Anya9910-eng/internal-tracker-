@@ -131,6 +131,16 @@
   .addtask,.addcol{border:1px dashed var(--line-strong);background:transparent;color:var(--muted);border-radius:var(--radius-sm);padding:10px;font-weight:600;font-size:13px;text-align:left;transition:color .15s,border-color .15s}
   .addtask:hover,.addcol:hover{color:var(--fg);border-color:var(--accent)}
   .addcol{flex:0 0 200px;align-self:flex-start;text-align:center;padding:16px}
+  .card:hover{transform:translateY(-1px)}
+  .chk:active{transform:scale(.88)}
+  .col.weekly{border-color:rgba(216,171,82,.45);box-shadow:0 0 0 1px rgba(216,171,82,.16) inset,var(--shadow)}
+  .col-head .mini.on{background:var(--gold-soft);color:var(--gold)}
+  .weekly-tag{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:var(--gold-soft);border:1px solid rgba(216,171,82,.3);border-radius:7px;padding:4px 9px;font-weight:700;align-self:flex-start;display:inline-flex;align-items:center;gap:5px}
+  .shift-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+  .shift-chip.night{background:rgba(99,102,241,.16);border-color:rgba(129,140,248,.4);color:#b4bcff}
+  .shift-chip.day{background:rgba(231,178,74,.14);border-color:rgba(231,178,74,.4);color:var(--gold)}
+  .crew .shiftdot{margin-left:auto;font-size:13px}
+  .crew-sub{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:700;margin-top:6px}
 
   /* dust layer */
   .dust-layer{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;z-index:1;overflow:hidden}
@@ -278,6 +288,7 @@
       <button class="profbtn" id="profBtn" aria-label="Open your profile">
         <span class="av" id="profAv">🧹</span>
         <span><span class="pn" id="profName">You</span><span class="ps" id="profStreakWrap"><span id="profStreak">0</span>-day streak 🔥</span></span>
+        <span class="shift-chip" id="profShift" hidden></span>
       </button>
     </header>
     <section id="goalWrap" style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px"></section>
@@ -457,14 +468,17 @@
     const b=$("#board"); b.innerHTML="";
     state.columns.forEach((col,ci)=>{
       const done=col.tasks.filter(t=>t.done).length;
-      const el=document.createElement("div"); el.className="col";
+      const el=document.createElement("div"); el.className="col"+(col.weekly?" weekly":"");
       el.innerHTML=`<div class="col-head">
           <input value="${esc(col.name)}" data-col="${col.id}" aria-label="List name">
           <span class="col-count">${done}/${col.tasks.length}</span>
+          <button class="mini ${col.weekly?"on":""}" data-weekly="${col.id}" title="${col.weekly?"Weekly — resets every Monday. Click to turn off.":"Make this a weekly recurring list (auto-unchecks every Monday)"}">🔁</button>
           <button class="mini" data-mv="l" data-col="${col.id}" title="Move left" ${ci===0?"disabled style=opacity:.3":""}>←</button>
           <button class="mini" data-mv="r" data-col="${col.id}" title="Move right" ${ci===state.columns.length-1?"disabled style=opacity:.3":""}>→</button>
           <button class="mini" data-delcol="${col.id}" title="Delete list">✕</button>
-        </div><div class="cards"></div>
+        </div>
+        ${col.weekly?`<div class="weekly-tag">🔁 Resets every Monday</div>`:""}
+        <div class="cards"></div>
         <button class="addtask" data-addtask="${col.id}">+ New task</button>`;
       const cards=el.querySelector(".cards");
       col.tasks.forEach(t=>cards.appendChild(taskCard(t)));
@@ -510,6 +524,7 @@
     else if((m=e.target.closest("[data-open]"))) openTask(m.dataset.open);
     else if((m=e.target.closest("[data-addtask]"))) addTask(m.dataset.addtask);
     else if((m=e.target.closest("[data-mv]"))) mutate(()=>api("POST","/api/columns/"+m.dataset.col+"/move",{dir:m.dataset.mv}));
+    else if((m=e.target.closest("[data-weekly]"))){ const c=state.columns.find(x=>x.id===m.dataset.weekly); mutate(()=>api("PATCH","/api/columns/"+m.dataset.weekly,{weekly:!(c&&c.weekly)})); }
     else if((m=e.target.closest("[data-delcol]"))) mutate(()=>api("DELETE","/api/columns/"+m.dataset.delcol));
   });
   $("#board").addEventListener("change", e=>{
@@ -655,12 +670,21 @@
     const bars=Array.from({length:7},(_,i)=>`<div class="sb ${i<Math.min(7,p.streakDays)?"on":""}"></div>`).join("");
     const ems=AV_EMOJI.map(e=>`<button data-em="${e}" class="${emojis.includes(e)?"on":""}">${e}</button>`).join("");
     const achs=achievements(p).map(a=>`<div class="ach ${a.on?"on":""}"><span class="ic">${a.ic}</span><span class="an">${a.name}</span><span class="ad">${a.desc}</span></div>`).join("");
-    const crew=state.users.map(u=>`<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span><span><span class="nm">${esc(u.name)}${u.id===p.id?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}</span>${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}</div>`).join("");
+    const crewRow=u=>`<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span><span><span class="nm">${esc(u.name)}${u.id===p.id?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}</span>${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span></div>`;
+    const dayCrew=state.users.filter(u=>u.shift!=="night");
+    const nightCrew=state.users.filter(u=>u.shift==="night");
+    const crew=`${dayCrew.length?`<div class="crew-sub">☀️ Day shift (${dayCrew.length})</div>`+dayCrew.map(crewRow).join(""):""}`
+             +`${nightCrew.length?`<div class="crew-sub">🌙 Night shift (${nightCrew.length})</div>`+nightCrew.map(crewRow).join(""):""}`;
     openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Profile">
       <div class="sheet-head"><h2>Your crew card</h2><button class="btn ghost sm" id="pLogout">Log out</button><button class="x" data-close aria-label="Close">✕</button></div>
       <div class="sheet-body">
         <div class="field"><label for="pName">Name on the board</label><input class="in" id="pName" value="${esc(p.name)}" placeholder="How the crew sees you"></div>
-        <div class="field"><label for="pStatus">Status</label><input class="in" id="pStatus" value="${esc(p.status)}" placeholder="e.g. Front desk · PM shift"></div>
+        <div class="row2">
+          <div class="field"><label for="pStatus">Status</label><input class="in" id="pStatus" value="${esc(p.status)}" placeholder="e.g. Front desk"></div>
+          <div class="field"><label>Shift</label><div class="seg" id="pShift">
+            <button type="button" data-v="day" class="${p.shift!=="night"?"on":""}">☀️ Day</button>
+            <button type="button" data-v="night" class="${p.shift==="night"?"on":""}">🌙 Night</button></div></div>
+        </div>
         <div class="field"><label>Shift streak</label><div class="streakbars">${bars}</div>
           <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">🔥 <b style="color:var(--fg)">${p.streakDays} day${p.streakDays===1?"":"s"}</b> in a row with a task closed.${p.paused?" Paused — your streak is safe.":""}</p></div>
         <div class="field"><label>Avatar emoji <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— pick up to 3</span></label><div class="emoji-grid" id="emGrid">${ems}</div></div>
@@ -670,7 +694,9 @@
         <div class="section-cap">Crew (${state.users.length})</div><div class="crew">${crew}</div>
         <button class="btn" id="pSave" style="margin-top:6px">Save card</button>
       </div></div>`);
-    let showStreak=p.showStreak, paused=p.paused;
+    let showStreak=p.showStreak, paused=p.paused, shift=p.shift==="night"?"night":"day";
+    $("#pShift").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; shift=b.dataset.v;
+      document.querySelectorAll("#pShift button").forEach(x=>x.classList.toggle("on",x.dataset.v===shift)); };
     $("#emGrid").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; const em=b.dataset.em; const i=emojis.indexOf(em);
       if(i>=0) emojis.splice(i,1); else { if(emojis.length>=3) emojis.shift(); emojis.push(em); }
       document.querySelectorAll("#emGrid button").forEach(x=>x.classList.toggle("on",emojis.includes(x.dataset.em))); };
@@ -678,7 +704,7 @@
     $("#cPause").parentElement.onclick=()=>{ paused=!paused; $("#cPause").classList.toggle("on",paused); $("#cPause").textContent=paused?"✓":""; };
     $("#pLogout").onclick=async()=>{ try{ await api("POST","/api/auth/logout"); }catch(e){} state.me=null; closeSheet(); showAuth(); };
     $("#pSave").onclick=async()=>{
-      const body={ name:$("#pName").value.trim()||p.name, status:$("#pStatus").value.trim(), emojis, showStreak, paused };
+      const body={ name:$("#pName").value.trim()||p.name, status:$("#pStatus").value.trim(), emojis, showStreak, paused, shift };
       closeSheet();
       try{ const r=await api("PATCH","/api/me",body); state.me=r.user; renderProfile(); await loadBoard(); }
       catch(err){ toast("⚠️ "+err.message); }
@@ -692,6 +718,7 @@
     $("#profAv").textContent=(p.emojis||[]).slice(0,3).join("")||"🧹";
     $("#profStreak").textContent=p.streakDays;
     $("#profStreakWrap").style.display=p.showStreak?"":"none";
+    const sc=$("#profShift"); if(sc){ const night=p.shift==="night"; sc.className="shift-chip "+(night?"night":"day"); sc.textContent=night?"🌙 Night":"☀️ Day"; sc.hidden=false; }
   }
 
   /* ---------- dust layer ---------- */

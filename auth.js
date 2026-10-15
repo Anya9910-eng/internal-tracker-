@@ -50,6 +50,7 @@ function publicUser(u) {
     email: u.email,
     name: u.name,
     status: u.status || "",
+    shift: u.shift || "day",
     emojis: safeJson(u.emojis, ["🧹"]),
     showStreak: !!u.show_streak,
     paused: !!u.paused,
