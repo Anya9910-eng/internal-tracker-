@@ -364,6 +364,7 @@
     <div class="board-head">
       <div class="tabs" id="viewTabs">
         <button data-view="board" class="on">🗂️ Shift board</button>
+        <button data-view="projects">📁 Projects <span class="tab-count" id="projCount"></span></button>
         <button data-view="recurring">🔁 Recurring <span class="tab-count" id="recurCount"></span></button>
       </div>
       <span class="hint" id="boardHint">Finishing a task sweeps its dust away • everyone sees the same board live</span>
@@ -406,7 +407,7 @@
 
   /* ---------- state ---------- */
   let state = { me:null, columns:[], recurring:[], goals:[], users:[] };
-  let view="board"; try{ const v=localStorage.getItem("hcb-view"); if(v==="recurring"||v==="board") view=v; }catch(e){}
+  let view="board"; try{ const v=localStorage.getItem("hcb-view"); if(["board","recurring","projects"].includes(v)) view=v; }catch(e){}
   const RECUR_LABEL={day:"Daily",week:"Weekly",month:"Monthly",quarter:"Quarterly"};
   const RECUR_META=[
     {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
@@ -582,15 +583,40 @@
 
   /* ---------- board ---------- */
   function userName(id){ const u=state.users.find(x=>x.id===id); return u?u.name:""; }
+  function boardTasks(){ return state.columns.flatMap(c=>c.tasks); }
   function renderBoard(){
     const rc=(state.recurring||[]).length;
     const rcEl=$("#recurCount"); if(rcEl) rcEl.textContent=rc?rc:"";
+    const projCount=new Set(boardTasks().map(t=>(t.project||"").trim()).filter(Boolean)).size;
+    const pcEl=$("#projCount"); if(pcEl) pcEl.textContent=projCount?projCount:"";
     document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
     const hint=$("#boardHint");
-    if(hint) hint.textContent = view==="recurring"
-      ? "Recurring tasks auto-uncheck when their cycle rolls over"
+    if(hint) hint.textContent = view==="recurring" ? "Recurring tasks auto-uncheck when their cycle rolls over"
+      : view==="projects" ? "Your tasks grouped by project • drag a card to another project to re-file it"
       : "Finishing a task sweeps its dust away • everyone sees the same board live";
-    if(view==="recurring") renderRecurringBoard(); else renderShiftBoard();
+    if(view==="recurring") renderRecurringBoard();
+    else if(view==="projects") renderProjectsBoard();
+    else renderShiftBoard();
+  }
+  function renderProjectsBoard(){
+    const b=$("#board"); b.innerHTML="";
+    const groups=new Map();
+    boardTasks().forEach(t=>{ const name=(t.project||"").trim()||"No project"; if(!groups.has(name)) groups.set(name,[]); groups.get(name).push(t); });
+    const names=[...groups.keys()].filter(n=>n!=="No project").sort((a,b)=>a.localeCompare(b));
+    if(groups.has("No project")) names.push("No project");
+    if(!names.length){
+      b.innerHTML=`<div class="col" style="flex:0 0 320px"><div class="goal-empty" style="padding:6px 4px"><h2 style="font-size:16px;margin-bottom:4px">No projects yet</h2><p style="font-size:12.5px">Open a task, set its <b>Project / area</b>, and it'll show up grouped here.</p></div></div>`;
+      return;
+    }
+    names.forEach(name=>{
+      const list=groups.get(name), done=list.filter(t=>t.done).length;
+      const projVal=name==="No project"?"":name;
+      const el=document.createElement("div"); el.className="col";
+      el.innerHTML=`<div class="col-head" style="cursor:default"><span class="recur-head">📁 ${esc(name)}</span><span class="col-count">${done}/${list.length}</span></div>
+        <div class="cards" data-cards-project="${esc(projVal)}"></div>`;
+      const cards=el.querySelector(".cards"); list.forEach(t=>cards.appendChild(taskCard(t)));
+      b.appendChild(el);
+    });
   }
   function renderShiftBoard(){
     const b=$("#board"); b.innerHTML="";
@@ -763,6 +789,9 @@
     } else if(cont.dataset.cardsRecur){
       const t=findTask(id);
       if(t && t.recur!==cont.dataset.cardsRecur) mutate(()=>api("PATCH","/api/tasks/"+id,{recur:cont.dataset.cardsRecur}));
+    } else if("cardsProject" in cont.dataset){
+      const t=findTask(id), np=cont.dataset.cardsProject;
+      if(t && (t.project||"")!==np) mutate(()=>api("PATCH","/api/tasks/"+id,{project:np}));
     }
   });
   board.addEventListener("dragend", cleanupDrag);

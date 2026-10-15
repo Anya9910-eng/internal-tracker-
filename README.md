@@ -19,6 +19,9 @@ plus SQLite — no external services, no API keys.
   database and are shared by the whole crew. **Drag cards between lists** or reorder
   within a list; in the Recurring view, dragging to another cadence column changes
   how often a task repeats.
+- **Three board views** — a tab switcher flips between **Shift board** (your lists),
+  **Projects** (the same tasks grouped by their Project/area — drag a card to re-file
+  it), and **Recurring** (tasks that repeat, split by cadence).
 - **Assignees are real people** — the assignee dropdown is the list of people who've
   actually signed up. That's how the board knows who's on the team.
 - **Live sync** — changes broadcast over Server-Sent Events, so everyone's board updates
