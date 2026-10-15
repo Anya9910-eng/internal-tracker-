@@ -17,6 +17,14 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 const addDays = (iso, n) => { const d = new Date(iso); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 // Key for "which week is it" — the date of this week's Monday. Used to reset weekly columns.
 const mondayKey = (d = new Date()) => { const x = new Date(d); const off = (x.getDay() + 6) % 7; x.setDate(x.getDate() - off); return x.toISOString().slice(0, 10); };
+// Period key for a recurrence cadence — a recurring task resets when its key changes.
+const recurKey = (recur, d = new Date()) => {
+  if (recur === "day") return d.toISOString().slice(0, 10);
+  if (recur === "week") return mondayKey(d);
+  if (recur === "month") return d.toISOString().slice(0, 7);
+  if (recur === "quarter") return d.getUTCFullYear() + "-Q" + (Math.floor(d.getUTCMonth() / 3) + 1);
+  return "";
+};
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -97,11 +105,31 @@ if (!taskCols.includes("due_date")) {
 if (!taskCols.includes("goal_id")) {
   db.exec("ALTER TABLE tasks ADD COLUMN goal_id TEXT");
 }
+// Per-task recurrence: '' | 'day' | 'week' | 'month' | 'quarter'
+if (!taskCols.includes("recur")) {
+  db.exec("ALTER TABLE tasks ADD COLUMN recur TEXT DEFAULT ''");
+}
+if (!taskCols.includes("recur_reset")) {
+  db.exec("ALTER TABLE tasks ADD COLUMN recur_reset TEXT DEFAULT ''");
+}
 const colCols = db.prepare("PRAGMA table_info(columns)").all().map(c => c.name);
 if (!colCols.includes("weekly")) db.exec("ALTER TABLE columns ADD COLUMN weekly INTEGER DEFAULT 0");
 if (!colCols.includes("last_reset")) db.exec("ALTER TABLE columns ADD COLUMN last_reset TEXT DEFAULT ''");
 const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
 if (!userCols.includes("shift")) db.exec("ALTER TABLE users ADD COLUMN shift TEXT DEFAULT 'day'");
+
+// One-time: convert the old per-column "weekly" model to per-task weekly recurrence.
+const weeklyCols = db.prepare("SELECT id FROM columns WHERE weekly=1").all();
+if (weeklyCols.length) {
+  const tx = db.transaction(() => {
+    for (const c of weeklyCols) {
+      db.prepare("UPDATE tasks SET recur='week', recur_reset=?, done=0 WHERE column_id=? AND IFNULL(recur,'')=''")
+        .run(mondayKey(), c.id);
+    }
+    db.prepare("UPDATE columns SET weekly=0 WHERE weekly=1").run();
+  });
+  tx();
+}
 
 // Migrate the old single-goal table into the multi-goal table (once).
 const goalsCount = db.prepare("SELECT COUNT(*) c FROM goals").get().c;
@@ -124,8 +152,8 @@ function seedIfEmpty() {
   const insCol = db.prepare("INSERT INTO columns (id,name,position) VALUES (?,?,?)");
   const gid = uid();
   const insTask = db.prepare(`INSERT INTO tasks
-    (id,column_id,title,notes,done,dust,priority,due_date,project,assignee_id,link,counts_goal,goal_id,position,created_at,updated_at)
-    VALUES (@id,@column_id,@title,'',@done,@dust,@priority,@due_date,@project,NULL,'',@counts_goal,@goal_id,@position,@now,@now)`);
+    (id,column_id,title,notes,done,dust,priority,due_date,project,assignee_id,link,counts_goal,goal_id,recur,recur_reset,position,created_at,updated_at)
+    VALUES (@id,@column_id,@title,'',@done,@dust,@priority,@due_date,@project,NULL,'',@counts_goal,@goal_id,@recur,@recur_reset,@position,@now,@now)`);
   const now = new Date().toISOString();
   const T = todayKey();
 
@@ -145,36 +173,39 @@ function seedIfEmpty() {
     ]]
   ];
 
-  // A standing weekly checklist that auto-unchecks every Monday.
-  const weeklyTasks = [
-    { title: "Fire alarm & extinguisher check", dust: 4, priority: "high" },
-    { title: "Deep-clean lobby glass & doors", dust: 5, priority: "med" },
-    { title: "Weekly linen inventory count", dust: 6, priority: "med" },
-    { title: "Pool & spa chemical log", dust: 3, priority: "med" },
-    { title: "Back-of-house walkthrough", dust: 4, priority: "med" },
-    { title: "Team huddle + next week's roster", dust: 2, priority: "low" }
+  // Recurring example tasks (live in the Recurring view, grouped by cadence).
+  const recurring = [
+    { recur: "day",     title: "Lobby & entrance walk-through", dust: 2, priority: "med" },
+    { recur: "day",     title: "Count the front-desk float", dust: 2, priority: "med" },
+    { recur: "day",     title: "Verify guest-ready rooms with housekeeping", dust: 3, priority: "high" },
+    { recur: "week",    title: "Fire alarm & extinguisher check", dust: 4, priority: "high" },
+    { recur: "week",    title: "Deep-clean lobby glass & doors", dust: 5, priority: "med" },
+    { recur: "week",    title: "Linen inventory count", dust: 6, priority: "med" },
+    { recur: "month",   title: "Test the emergency generator", dust: 5, priority: "high" },
+    { recur: "month",   title: "Deep-clean guest-room carpets", dust: 7, priority: "med" },
+    { recur: "quarter", title: "Full fire-safety audit", dust: 8, priority: "high" },
+    { recur: "quarter", title: "Review vendor contracts & rates", dust: 6, priority: "med" }
   ];
 
   const seed = db.transaction(() => {
-    // weekly column first so the crew sees the standing checklist up top
-    const wid = uid();
-    db.prepare("INSERT INTO columns (id,name,position,weekly,last_reset) VALUES (?,?,?,1,?)")
-      .run(wid, "Weekly recurring", 0, mondayKey());
-    weeklyTasks.forEach((t, ti) => insTask.run({
-      id: uid(), column_id: wid, title: t.title, done: 0, dust: t.dust,
-      priority: t.priority, due_date: "", project: "Recurring",
-      counts_goal: 0, goal_id: null, position: ti, now
-    }));
-
+    const colIds = [];
     cols.forEach(([name, tasks], ci) => {
-      const cid = uid();
-      insCol.run(cid, name, ci + 1);
+      const cid = uid(); colIds.push(cid);
+      insCol.run(cid, name, ci);
       tasks.forEach((t, ti) => insTask.run({
         id: uid(), column_id: cid, title: t.title, done: t.done ? 1 : 0, dust: t.dust,
         priority: t.priority, due_date: t.due_date, project: t.project,
-        counts_goal: t.counts_goal, goal_id: t.counts_goal ? gid : null, position: ti, now
+        counts_goal: t.counts_goal, goal_id: t.counts_goal ? gid : null,
+        recur: "", recur_reset: "", position: ti, now
       }));
     });
+    // recurring tasks are parked on the first list (hidden from the normal board) and shown in the Recurring view
+    recurring.forEach((t, ti) => insTask.run({
+      id: uid(), column_id: colIds[0], title: t.title, done: 0, dust: t.dust,
+      priority: t.priority, due_date: "", project: "",
+      counts_goal: 0, goal_id: null, recur: t.recur, recur_reset: recurKey(t.recur),
+      position: 1000 + ti, now
+    }));
     db.prepare(`INSERT INTO goals (id,title,start,deadline,team_emoji,finish_emoji,rewards,position,created_at)
       VALUES (?,?,?,?,?,?,?,0,?)`).run(
       gid, "Q4 Guest Satisfaction Push", todayKey(), addDays(todayKey(), 28), "🛎️", "🏆",
@@ -190,4 +221,4 @@ function seedIfEmpty() {
 }
 seedIfEmpty();
 
-module.exports = { db, uid, todayKey, addDays, mondayKey, DB_PATH };
+module.exports = { db, uid, todayKey, addDays, mondayKey, recurKey, DB_PATH };

@@ -96,9 +96,16 @@
   .reward .pct{font-weight:700;font-variant-numeric:tabular-nums}
 
   /* board */
-  .board-head{display:flex;align-items:center;gap:10px;margin:4px 2px 12px}
+  .board-head{display:flex;align-items:center;gap:10px;margin:4px 2px 12px;flex-wrap:wrap}
   .board-head h2{font-size:15px}
   .board-head .hint{color:var(--muted-2);font-size:11.5px;margin-left:auto}
+  .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tabs button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+  .tabs button.on{background:var(--accent);color:#fff}
+  .tab-count{font-size:11px;font-weight:700;background:rgba(255,255,255,.22);padding:1px 7px;border-radius:999px;min-width:18px;text-align:center}
+  .tabs button:not(.on) .tab-count{background:var(--surface-3);color:var(--muted)}
+  .pill.recur{background:rgba(99,102,241,.16);color:#b4bcff}
+  .recur-head{font-family:var(--font-display);font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:7px;flex:1;min-width:0}
   .board{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 18px;scroll-snap-type:x proximity}
   .board::-webkit-scrollbar{height:9px}.board::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:9px}
   .col{flex:0 0 286px;scroll-snap-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:9px;align-self:flex-start;max-height:70vh}
@@ -302,8 +309,11 @@
     </header>
     <section id="goalWrap" style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px"></section>
     <div class="board-head">
-      <span class="eyebrow">Shift board</span><h2>This week</h2>
-      <span class="hint">Finishing a task sweeps its dust away • everyone sees the same board live</span>
+      <div class="tabs" id="viewTabs">
+        <button data-view="board" class="on">🗂️ Shift board</button>
+        <button data-view="recurring">🔁 Recurring <span class="tab-count" id="recurCount"></span></button>
+      </div>
+      <span class="hint" id="boardHint">Finishing a task sweeps its dust away • everyone sees the same board live</span>
     </div>
     <div class="board" id="board"></div>
   </div>
@@ -332,7 +342,15 @@
   }
 
   /* ---------- state ---------- */
-  let state = { me:null, columns:[], goals:[], users:[] };
+  let state = { me:null, columns:[], recurring:[], goals:[], users:[] };
+  let view="board"; try{ const v=localStorage.getItem("hcb-view"); if(v==="recurring"||v==="board") view=v; }catch(e){}
+  const RECUR_LABEL={day:"Daily",week:"Weekly",month:"Monthly",quarter:"Quarterly"};
+  const RECUR_META=[
+    {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
+    {key:"week",name:"Weekly",note:"Resets every Monday",ic:"📅"},
+    {key:"month",name:"Monthly",note:"Resets on the 1st",ic:"🗓️"},
+    {key:"quarter",name:"Quarterly",note:"Resets each quarter",ic:"📈"}
+  ];
   let loadTimer=null, es=null;
 
   /* ---------- auth screen ---------- */
@@ -398,7 +416,7 @@
   async function loadBoard(){
     try{
       const d=await api("GET","/api/board");
-      state.me=d.me; state.columns=d.columns; state.goals=d.goals||[]; state.users=d.users;
+      state.me=d.me; state.columns=d.columns; state.recurring=d.recurring||[]; state.goals=d.goals||[]; state.users=d.users;
       renderProfile(); renderGoals(); renderBoard(); syncDust();
     }catch(err){ if(err.status===401) showAuth(); }
   }
@@ -474,19 +492,27 @@
   /* ---------- board ---------- */
   function userName(id){ const u=state.users.find(x=>x.id===id); return u?u.name:""; }
   function renderBoard(){
+    const rc=(state.recurring||[]).length;
+    const rcEl=$("#recurCount"); if(rcEl) rcEl.textContent=rc?rc:"";
+    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
+    const hint=$("#boardHint");
+    if(hint) hint.textContent = view==="recurring"
+      ? "Recurring tasks auto-uncheck when their cycle rolls over"
+      : "Finishing a task sweeps its dust away • everyone sees the same board live";
+    if(view==="recurring") renderRecurringBoard(); else renderShiftBoard();
+  }
+  function renderShiftBoard(){
     const b=$("#board"); b.innerHTML="";
     state.columns.forEach((col,ci)=>{
       const done=col.tasks.filter(t=>t.done).length;
-      const el=document.createElement("div"); el.className="col"+(col.weekly?" weekly":"");
+      const el=document.createElement("div"); el.className="col";
       el.innerHTML=`<div class="col-head">
           <input value="${esc(col.name)}" data-col="${col.id}" aria-label="List name">
           <span class="col-count">${done}/${col.tasks.length}</span>
-          <button class="mini ${col.weekly?"on":""}" data-weekly="${col.id}" title="${col.weekly?"Weekly — resets every Monday. Click to turn off.":"Make this a weekly recurring list (auto-unchecks every Monday)"}">🔁</button>
           <button class="mini" data-mv="l" data-col="${col.id}" title="Move left" ${ci===0?"disabled style=opacity:.3":""}>←</button>
           <button class="mini" data-mv="r" data-col="${col.id}" title="Move right" ${ci===state.columns.length-1?"disabled style=opacity:.3":""}>→</button>
           <button class="mini" data-delcol="${col.id}" title="Delete list">✕</button>
         </div>
-        ${col.weekly?`<div class="weekly-tag">🔁 Resets every Monday</div>`:""}
         <div class="cards"></div>
         <button class="addtask" data-addtask="${col.id}">+ New task</button>`;
       const cards=el.querySelector(".cards");
@@ -497,6 +523,29 @@
     add.onclick=()=>mutate(()=>api("POST","/api/columns",{name:"New list"}));
     b.appendChild(add);
   }
+  function renderRecurringBoard(){
+    const b=$("#board"); b.innerHTML="";
+    RECUR_META.forEach(rm=>{
+      const list=(state.recurring||[]).filter(t=>t.recur===rm.key);
+      const done=list.filter(t=>t.done).length;
+      const el=document.createElement("div"); el.className="col recur-col";
+      el.innerHTML=`<div class="col-head" style="cursor:default">
+          <span class="recur-head">${rm.ic} ${rm.name}</span>
+          <span class="col-count">${done}/${list.length}</span>
+        </div>
+        <div class="weekly-tag">🔁 ${rm.note}</div>
+        <div class="cards"></div>
+        <button class="addtask" data-addrecur="${rm.key}">+ New ${rm.name.toLowerCase()} task</button>`;
+      const cards=el.querySelector(".cards");
+      list.forEach(t=>cards.appendChild(taskCard(t)));
+      b.appendChild(el);
+    });
+  }
+  document.getElementById("viewTabs").addEventListener("click",e=>{
+    const btn=e.target.closest("button[data-view]"); if(!btn) return;
+    view=btn.dataset.view; try{ localStorage.setItem("hcb-view",view); }catch(e2){}
+    renderBoard();
+  });
   function taskCard(t){
     const el=document.createElement("div"); el.className="card"+(t.done?" done":"");
     const pr=t.priority==="high"?"p-high":t.priority==="low"?"p-low":"p-med";
@@ -514,6 +563,7 @@
         </div></div>
       <div class="tags">
         <span class="pill ${pr}">${prL}</span>
+        ${t.recur?`<span class="pill recur">🔁 ${RECUR_LABEL[t.recur]||"Repeats"}</span>`:""}
         ${dueP}
         ${t.project?`<span class="pill">${esc(t.project)}</span>`:""}
         ${who?`<span class="pill who">${esc(who)}</span>`:""}
@@ -521,7 +571,7 @@
     return el;
   }
 
-  function findTask(id){ for(const c of state.columns){ const t=c.tasks.find(x=>x.id===id); if(t) return t; } return null; }
+  function findTask(id){ for(const c of state.columns){ const t=c.tasks.find(x=>x.id===id); if(t) return t; } return (state.recurring||[]).find(x=>x.id===id)||null; }
 
   /* mutate: optimistic-ish — call API, reload (SSE also reloads for others) */
   async function mutate(fn){ try{ await fn(); await loadBoard(); }catch(err){ if(err.status===401){ showAuth(); } else toast("⚠️ "+err.message); } }
@@ -533,7 +583,7 @@
     else if((m=e.target.closest("[data-open]"))) openTask(m.dataset.open);
     else if((m=e.target.closest("[data-addtask]"))) addTask(m.dataset.addtask);
     else if((m=e.target.closest("[data-mv]"))) mutate(()=>api("POST","/api/columns/"+m.dataset.col+"/move",{dir:m.dataset.mv}));
-    else if((m=e.target.closest("[data-weekly]"))){ const c=state.columns.find(x=>x.id===m.dataset.weekly); mutate(()=>api("PATCH","/api/columns/"+m.dataset.weekly,{weekly:!(c&&c.weekly)})); }
+    else if((m=e.target.closest("[data-addrecur]"))) addRecurring(m.dataset.addrecur);
     else if((m=e.target.closest("[data-delcol]"))) mutate(()=>api("DELETE","/api/columns/"+m.dataset.delcol));
   });
   $("#board").addEventListener("change", e=>{
@@ -553,6 +603,7 @@
   function bumpDust(id,d){ const t=findTask(id); if(!t)return; const nd=Math.max(0,t.dust+d);
     mutate(()=>api("PATCH","/api/tasks/"+id,{dust:nd})); }
   function addTask(colId){ mutate(async()=>{ const r=await api("POST","/api/columns/"+colId+"/tasks"); pendingOpen=r.id; }); }
+  function addRecurring(recur){ mutate(async()=>{ const r=await api("POST","/api/recurring",{recur}); pendingOpen=r.id; }); }
   let pendingOpen=null;
   const _loadBoard=loadBoard;
   loadBoard=async function(){ await _loadBoard(); if(pendingOpen){ const id=pendingOpen; pendingOpen=null; openTask(id,true); } };
@@ -578,6 +629,14 @@
           <div class="field"><label for="tProj">Project / area</label><input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
           <div class="field"><label for="tWho">Assignee</label><select class="in" id="tWho">${teamOpts}</select></div>
         </div>
+        <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— recurring tasks move to the Recurring board</span></label>
+          <div class="seg" id="tRecur">
+            <button data-v="" class="${!t.recur?"on":""}">Doesn't repeat</button>
+            <button data-v="day" class="${t.recur==="day"?"on":""}">Daily</button>
+            <button data-v="week" class="${t.recur==="week"?"on":""}">Weekly</button>
+            <button data-v="month" class="${t.recur==="month"?"on":""}">Monthly</button>
+            <button data-v="quarter" class="${t.recur==="quarter"?"on":""}">Quarterly</button>
+          </div></div>
         <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
         <div class="dustbox"><div class="hd">🌫️ Dust <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
           <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
@@ -595,6 +654,8 @@
 
     let prio=t.priority;
     $("#tPrio").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; document.querySelectorAll("#tPrio button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); prio=b.dataset.v; };
+    let recur=t.recur||"";
+    $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); };
     let dust=t.dust; const dn=$("#tDustN");
     $("#tDustUp").onclick=()=>{ dust++; dn.textContent=dust; };
     $("#tDustDown").onclick=()=>{ dust=Math.max(0,dust-1); dn.textContent=dust; };
@@ -611,7 +672,7 @@
     $("#tSave").onclick=()=>{
       const body={ title:$("#tTitle").value.trim(), notes:$("#tDesc").value, priority:prio, dust,
         dueDate:$("#tDue").value||"", project:$("#tProj").value.trim(),
-        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null };
+        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null, recur };
       closeSheet(); mutate(()=>api("PATCH","/api/tasks/"+t.id,body));
     };
     if(isNew) setTimeout(()=>{ const i=$("#tTitle"); if(i) i.focus(); },30);
@@ -733,7 +794,7 @@
 
   /* ---------- dust layer ---------- */
   const dustLayer=$("#dustLayer"); let bunnies=[], dustRAF=null, t0=performance.now();
-  function openDustTotal(){ return state.columns.flatMap(c=>c.tasks).filter(t=>!t.done).reduce((s,t)=>s+t.dust,0); }
+  function openDustTotal(){ return [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])].filter(t=>!t.done).reduce((s,t)=>s+t.dust,0); }
   function syncDust(){
     const total=openDustTotal();
     $("#dustCount").innerHTML=`<b>${total}</b> 🌫️ dust to sweep`;
@@ -776,7 +837,7 @@
       <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 58 40;15 58 40;-9 58 40" dur="1.2s" repeatCount="indefinite"/>
     </g>
   </svg></div>`;
-  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false;
+  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false, everDusty=false;
   function buildMascot(){
     if(mascotEl) return;
     mascotEl=document.createElement("div");
@@ -794,8 +855,8 @@
     if(mascotX<14){ mascotX=14; mascotDir=1; }
     mascotEl.style.transform=`translateX(${mascotX}px)`;
     mascotEl.classList.toggle("flip", mascotDir<0);
-    if(clean && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
-    if(!clean) idleSaid=false;
+    if(!clean){ everDusty=true; idleSaid=false; }
+    if(clean && everDusty && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
   }
   let sayT=null;
   function mascotSay(text){

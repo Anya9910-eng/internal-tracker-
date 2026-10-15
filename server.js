@@ -7,7 +7,8 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const { db, uid, todayKey, addDays, mondayKey } = require("./db");
+const { db, uid, todayKey, addDays, recurKey } = require("./db");
+const RECURS = ["day", "week", "month", "quarter"];
 const auth = require("./auth");
 
 const app = express();
@@ -119,41 +120,46 @@ function allGoals() {
   return db.prepare("SELECT * FROM goals ORDER BY position, created_at, rowid").all().map(goalProgress);
 }
 
-// Uncheck every task in weekly columns when a new week starts (Monday).
-function resetWeeklyIfNeeded() {
-  const wk = mondayKey();
-  const due = db.prepare("SELECT id FROM columns WHERE weekly=1 AND IFNULL(last_reset,'')<>?").all(wk);
-  if (!due.length) return false;
+// Uncheck a recurring task when its period (day/week/month/quarter) rolls over.
+function resetRecurringIfNeeded() {
+  const rows = db.prepare("SELECT id,recur,recur_reset FROM tasks WHERE IFNULL(recur,'')<>''").all();
+  let changed = false;
   const tx = db.transaction(() => {
-    for (const c of due) {
-      db.prepare("UPDATE tasks SET done=0 WHERE column_id=?").run(c.id);
-      db.prepare("UPDATE columns SET last_reset=? WHERE id=?").run(wk, c.id);
+    for (const t of rows) {
+      const k = recurKey(t.recur);
+      if (k && t.recur_reset !== k) {
+        db.prepare("UPDATE tasks SET done=0, recur_reset=? WHERE id=?").run(k, t.id);
+        changed = true;
+      }
     }
   });
   tx();
-  return true;
+  return changed;
 }
 
 app.get("/api/board", requireAuth, (req, res) => {
-  if (resetWeeklyIfNeeded()) broadcast();
+  if (resetRecurringIfNeeded()) broadcast();
   const cols = db.prepare("SELECT * FROM columns ORDER BY position, rowid").all();
   const tasks = db.prepare("SELECT * FROM tasks ORDER BY position, rowid").all();
+  const shape = t => ({
+    id: t.id, title: t.title, notes: t.notes, done: !!t.done, dust: t.dust,
+    priority: t.priority, dueDate: t.due_date || "", project: t.project,
+    assigneeId: t.assignee_id, goalId: t.goal_id || "", recur: t.recur || ""
+  });
   const byCol = {};
   cols.forEach(c => (byCol[c.id] = []));
+  const recurring = [];
   tasks.forEach(t => {
-    if (!byCol[t.column_id]) return;
-    byCol[t.column_id].push({
-      id: t.id, title: t.title, notes: t.notes, done: !!t.done, dust: t.dust,
-      priority: t.priority, dueDate: t.due_date || "", project: t.project,
-      assigneeId: t.assignee_id, goalId: t.goal_id || ""
-    });
+    if (t.recur) { recurring.push(shape(t)); return; }   // recurring tasks live in the Recurring view only
+    if (byCol[t.column_id]) byCol[t.column_id].push(shape(t));
   });
   const users = db.prepare("SELECT id,name,emojis,status,shift,show_streak,streak_days FROM users ORDER BY name").all()
     .map(u => ({ id: u.id, name: u.name, emojis: auth.safeJson(u.emojis, ["🧹"]), status: u.status || "",
                  shift: u.shift || "day", streakDays: u.show_streak ? u.streak_days : null }));
   res.json({
     me: auth.publicUser(req.user),
-    columns: cols.map(c => ({ id: c.id, name: c.name, weekly: !!c.weekly, tasks: byCol[c.id] })),
+    columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
+    recurring,
     goals: allGoals(),
     users
   });
@@ -169,18 +175,28 @@ app.post("/api/columns", requireAuth, (req, res) => {
 });
 
 app.patch("/api/columns/:id", requireAuth, (req, res) => {
-  const col = db.prepare("SELECT * FROM columns WHERE id=?").get(req.params.id);
-  if (!col) return res.status(404).json({ error: "List not found" });
-  const b = req.body || {};
-  const name = b.name != null ? String(b.name).slice(0, 60) : col.name;
-  let weekly = col.weekly, lastReset = col.last_reset;
-  if (b.weekly != null) {
-    weekly = b.weekly ? 1 : 0;
-    if (weekly && !col.weekly) lastReset = mondayKey(); // start the weekly clock now; don't reset mid-week
-  }
-  db.prepare("UPDATE columns SET name=?,weekly=?,last_reset=? WHERE id=?")
-    .run(name, weekly, lastReset, req.params.id);
+  const r = db.prepare("UPDATE columns SET name=? WHERE id=?")
+    .run(String((req.body || {}).name || "").slice(0, 60), req.params.id);
+  if (!r.changes) return res.status(404).json({ error: "List not found" });
   broadcast(); res.json({ ok: true });
+});
+
+/* create a recurring task directly (lands in the Recurring view under its cadence) */
+app.post("/api/recurring", requireAuth, (req, res) => {
+  const recur = RECURS.includes((req.body || {}).recur) ? req.body.recur : "week";
+  let col = db.prepare("SELECT id FROM columns ORDER BY position, rowid LIMIT 1").get();
+  if (!col) {
+    const cid = uid();
+    db.prepare("INSERT INTO columns (id,name,position) VALUES (?,?,0)").run(cid, "To do");
+    col = { id: cid };
+  }
+  const id = uid();
+  const now = new Date().toISOString();
+  const max = db.prepare("SELECT COALESCE(MAX(position),-1) m FROM tasks").get().m;
+  db.prepare(`INSERT INTO tasks (id,column_id,title,dust,priority,recur,recur_reset,position,created_at,updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, col.id, "", 3, "med", recur, recurKey(recur), max + 1, now, now);
+  broadcast(); res.json({ id });
 });
 
 app.post("/api/columns/:id/move", requireAuth, (req, res) => {
@@ -232,7 +248,9 @@ app.patch("/api/tasks/:id", requireAuth, (req, res) => {
     due_date: due,
     project: b.project != null ? String(b.project).slice(0, 60) : t.project,
     goal_id: t.goal_id,
-    assignee_id: t.assignee_id
+    assignee_id: t.assignee_id,
+    recur: t.recur || "",
+    recur_reset: t.recur_reset || ""
   };
   if (b.goalId !== undefined) {
     f.goal_id = b.goalId ? String(b.goalId) : null;
@@ -242,8 +260,12 @@ app.patch("/api/tasks/:id", requireAuth, (req, res) => {
     f.assignee_id = b.assigneeId ? String(b.assigneeId) : null;
     if (f.assignee_id && !db.prepare("SELECT 1 FROM users WHERE id=?").get(f.assignee_id)) f.assignee_id = null;
   }
+  if (b.recur !== undefined) {
+    const v = b.recur && RECURS.includes(b.recur) ? b.recur : "";
+    if (v !== (t.recur || "")) { f.recur = v; f.recur_reset = v ? recurKey(v) : ""; }
+  }
   db.prepare(`UPDATE tasks SET title=@title,notes=@notes,dust=@dust,priority=@priority,due_date=@due_date,
-              project=@project,goal_id=@goal_id,assignee_id=@assignee_id,updated_at=@now
+              project=@project,goal_id=@goal_id,assignee_id=@assignee_id,recur=@recur,recur_reset=@recur_reset,updated_at=@now
               WHERE id=@id`).run({ ...f, now: new Date().toISOString(), id: t.id });
   broadcast(); res.json({ ok: true });
 });
