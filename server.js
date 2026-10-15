@@ -166,8 +166,8 @@ app.get("/api/board", requireAuth, (req, res) => {
   cols.forEach(c => (byCol[c.id] = []));
   const recurring = [];
   tasks.forEach(t => {
-    if (t.recur) { recurring.push(shape(t)); return; }   // recurring tasks live in the Recurring view only
-    if (byCol[t.column_id]) byCol[t.column_id].push(shape(t));
+    if (t.recur) recurring.push(shape(t));              // also surfaced, grouped, in the Recurring view
+    if (byCol[t.column_id]) byCol[t.column_id].push(shape(t)); // but still lives on its list on the board
   });
   const choreRows = db.prepare("SELECT to_id, COUNT(*) n FROM nudges WHERE kind='chore' GROUP BY to_id").all();
   const choreBy = {}; choreRows.forEach(r => (choreBy[r.to_id] = r.n));
@@ -355,15 +355,12 @@ app.post("/api/tasks/:id/move", requireAuth, (req, res) => {
   const b = req.body || {};
   const col = db.prepare("SELECT id FROM columns WHERE id=?").get(String(b.columnId || ""));
   if (!col) return res.status(404).json({ error: "List not found" });
-  // dragging a task onto the board clears any recurrence (it leaves the Recurring view)
-  const clearRecur = !!t.recur;
-  const order = db.prepare("SELECT id FROM tasks WHERE column_id=? AND IFNULL(recur,'')='' AND id<>? ORDER BY position, rowid")
+  const order = db.prepare("SELECT id FROM tasks WHERE column_id=? AND id<>? ORDER BY position, rowid")
     .all(col.id, t.id).map(r => r.id);
   let idx = parseInt(b.index, 10); if (!Number.isFinite(idx)) idx = order.length;
   idx = Math.max(0, Math.min(idx, order.length));
   order.splice(idx, 0, t.id);
   const tx = db.transaction(() => {
-    if (clearRecur) db.prepare("UPDATE tasks SET recur='', recur_reset='' WHERE id=?").run(t.id);
     db.prepare("UPDATE tasks SET column_id=? WHERE id=?").run(col.id, t.id);
     order.forEach((id, i) => db.prepare("UPDATE tasks SET position=? WHERE id=?").run(i, id));
   });

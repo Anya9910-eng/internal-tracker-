@@ -1020,7 +1020,7 @@
 
   /* ---------- dust layer ---------- */
   const dustLayer=$("#dustLayer"); let bunnies=[], dustRAF=null, t0=performance.now();
-  function openDustTotal(){ return [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])].filter(t=>!t.done).reduce((s,t)=>s+t.dust,0); }
+  function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
   function syncDust(){
     const total=openDustTotal();
     $("#dustCount").innerHTML=`<b>${total}</b> 🌫️ dust to sweep`;
