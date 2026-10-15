@@ -149,15 +149,19 @@
   .card .ttl{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.35;cursor:pointer;word-break:break-word}
   .card.done .ttl{text-decoration:line-through;text-decoration-color:var(--muted-2)}
   /* compact meta line: due · recur · project … avatar */
-  .card-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11px;color:var(--muted);line-height:1.2}
-  .m-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:var(--muted);font-weight:500}
+  /* fixed 2x2 slots: project | deadline  /  recurrence | assignee */
+  .card-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;font-size:11px;color:var(--muted);line-height:1.2}
+  .card-meta:empty{display:none}
+  .m-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;color:var(--muted);font-weight:500}
   .m-item .ic{flex:none;font-size:10.5px;line-height:1;opacity:.85}
-  .m-item .t{max-width:120px;overflow:hidden;text-overflow:ellipsis}
-  .m-item + .m-item::before{content:"·";margin-right:7px;color:var(--line-strong);font-weight:400}
+  .m-item .t{overflow:hidden;text-overflow:ellipsis}
+  .s-proj{grid-column:1;grid-row:1}
+  .s-dl{grid-column:2;grid-row:1;justify-self:end}
+  .s-recur{grid-column:1;grid-row:2}
+  .s-name{grid-column:2;grid-row:2;justify-self:end;max-width:120px}
   .m-due.overdue{color:#ff8f78;font-weight:600}
   .m-due.today{color:var(--gold);font-weight:600}
-  .m-spacer{flex:1 1 0;min-width:4px}
-  .avatar{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-bright);font-size:9.5px;font-weight:800;display:grid;place-items:center;flex:0 0 auto}
+  .avatar{width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent-bright);font-size:9px;font-weight:800;display:grid;place-items:center;flex:0 0 auto}
   .dust-ctl{display:flex;align-items:center;gap:7px;margin-left:auto}
   .dust-ctl button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:15px;line-height:1;display:grid;place-items:center}
   .dust-ctl button:hover{border-color:var(--line-strong)}
@@ -427,7 +431,7 @@
     let suf="";
     if(t.recur==="week" && t.recurAnchor!=null) suf=" "+WEEKDAYS[((t.recurAnchor%7)+7)%7];
     else if((t.recur==="month"||t.recur==="quarter") && t.recurAnchor!=null) suf=" "+(t.recurAnchor===0?"last":ordinal(t.recurAnchor));
-    return `<span class="m-item m-recur"><span class="ic">🔁</span>${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
+    return `<span class="m-item m-recur s-recur" title="Repeats"><span class="ic">🔁</span>${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
   }
   const RECUR_META=[
     {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
@@ -690,10 +694,12 @@
     el.title=(t.priority==="high"?"High":t.priority==="low"?"Low":"Medium")+" priority";
     const who=t.assigneeId?userName(t.assigneeId):"";
     const dm=dueMeta(t.dueDate);
-    const dueM=dm?`<span class="m-item m-due ${(!t.done&&dm.diff<0)?"overdue":dm.diff===0?"today":""}"><span class="ic">📅</span>${dm.diff===0?"Today":esc(dm.label)}</span>`:"";
-    const projM=t.project?`<span class="m-item m-proj" title="${esc(t.project)}"><span class="ic">📁</span><span class="t">${esc(t.project)}</span></span>`:"";
-    const metaInner=dueM+recurBadge(t)+projM;
-    const metaRow=(metaInner||who)?`<div class="card-meta">${metaInner}<span class="m-spacer"></span>${who?`<span class="avatar" title="${esc(who)}">${esc(initialsOf(who))}</span>`:""}</div>`:"";
+    const dueM=dm?`<span class="m-item m-due s-dl ${(!t.done&&dm.diff<0)?"overdue":dm.diff===0?"today":""}" title="Deadline"><span class="ic">📅</span>${dm.diff===0?"Today":esc(dm.label)}</span>`:"";
+    const projM=t.project?`<span class="m-item m-proj s-proj" title="Project: ${esc(t.project)}"><span class="ic">📁</span><span class="t">${esc(t.project)}</span></span>`:"";
+    const firstName=who?who.trim().split(/\s+/)[0]:"";
+    const nameM=who?`<span class="m-item s-name" title="Assigned to ${esc(who)}"><span class="avatar">${esc(initialsOf(who))}</span><span class="t">${esc(firstName)}</span></span>`:"";
+    const metaInner=projM+dueM+recurBadge(t)+nameM;
+    const metaRow=metaInner?`<div class="card-meta">${metaInner}</div>`:"";
     el.innerHTML=`<div class="card-top">
         <button class="chk ${t.done?"on":""}" data-done="${t.id}" aria-label="Toggle done">${t.done?"✓":""}</button>
         <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
