@@ -159,6 +159,10 @@
   .addtask:hover,.addcol:hover{color:var(--fg);border-color:var(--accent)}
   .addcol{flex:0 0 200px;align-self:flex-start;text-align:center;padding:16px}
   .card:hover{transform:translateY(-1px)}
+  .card{cursor:grab}
+  .card:active{cursor:grabbing}
+  .card.dragging{opacity:.4;cursor:grabbing}
+  .drop-line{height:3px;border-radius:2px;background:var(--accent-bright);box-shadow:0 0 8px -1px var(--accent-bright);flex:0 0 auto}
   .chk:active{transform:scale(.88)}
   .col.weekly{border-color:rgba(216,171,82,.45);box-shadow:0 0 0 1px rgba(216,171,82,.16) inset,var(--shadow)}
   .col-head .mini.on{background:var(--gold-soft);color:var(--gold)}
@@ -600,7 +604,7 @@
           <button class="mini" data-mv="r" data-col="${col.id}" title="Move right" ${ci===state.columns.length-1?"disabled style=opacity:.3":""}>→</button>
           <button class="mini" data-delcol="${col.id}" title="Delete list">✕</button>
         </div>
-        <div class="cards"></div>
+        <div class="cards" data-cards-col="${col.id}"></div>
         <button class="addtask" data-addtask="${col.id}">+ New task</button>`;
       const cards=el.querySelector(".cards");
       col.tasks.forEach(t=>cards.appendChild(taskCard(t)));
@@ -621,7 +625,7 @@
           <span class="col-count">${done}/${list.length}</span>
         </div>
         <div class="weekly-tag">🔁 ${rm.note}</div>
-        <div class="cards"></div>
+        <div class="cards" data-cards-recur="${rm.key}"></div>
         <button class="addtask" data-addrecur="${rm.key}">+ New ${rm.name.toLowerCase()} task</button>`;
       const cards=el.querySelector(".cards");
       list.forEach(t=>cards.appendChild(taskCard(t)));
@@ -635,6 +639,7 @@
   });
   function taskCard(t){
     const el=document.createElement("div"); el.className="card"+(t.done?" done":"");
+    el.draggable=true; el.dataset.card=t.id;
     const pr=t.priority==="high"?"p-high":t.priority==="low"?"p-low":"p-med";
     const prL=t.priority==="high"?"High":t.priority==="low"?"Low":"Medium";
     const who=t.assigneeId?userName(t.assigneeId):"";
@@ -718,6 +723,49 @@
     const inp=e.target.closest("input[data-col]");
     if(inp) mutate(()=>api("PATCH","/api/columns/"+inp.dataset.col,{name:inp.value}));
   });
+
+  /* ---------- drag & drop task cards ---------- */
+  let draggingId=null, lastCont=null;
+  const board=$("#board");
+  function cardsIndexAt(cont,y){
+    const cards=[...cont.querySelectorAll(".card:not(.dragging)")];
+    for(let i=0;i<cards.length;i++){ const r=cards[i].getBoundingClientRect(); if(y < r.top + r.height/2) return i; }
+    return cards.length;
+  }
+  function showDropLine(cont,idx){
+    let line=document.getElementById("dropLine");
+    if(!line){ line=document.createElement("div"); line.id="dropLine"; line.className="drop-line"; }
+    const cards=[...cont.querySelectorAll(".card:not(.dragging)")];
+    if(idx>=cards.length) cont.appendChild(line); else cont.insertBefore(line,cards[idx]);
+  }
+  function removeDropLine(){ const l=document.getElementById("dropLine"); if(l) l.remove(); }
+  function cleanupDrag(){ const d=board.querySelector(".card.dragging"); if(d) d.classList.remove("dragging"); removeDropLine(); draggingId=null; lastCont=null; }
+  board.addEventListener("dragstart", e=>{
+    const c=e.target.closest("[data-card]"); if(!c) return;
+    draggingId=c.dataset.card; setTimeout(()=>c.classList.add("dragging"),0);
+    try{ e.dataTransfer.setData("text/plain",draggingId); e.dataTransfer.effectAllowed="move"; }catch(_){}
+  });
+  board.addEventListener("dragover", e=>{
+    if(!draggingId) return;
+    const cont=e.target.closest(".cards"); if(!cont) return;
+    e.preventDefault(); try{ e.dataTransfer.dropEffect="move"; }catch(_){}
+    lastCont=cont; showDropLine(cont, cardsIndexAt(cont,e.clientY));
+  });
+  board.addEventListener("drop", e=>{
+    if(!draggingId) return;
+    const cont=e.target.closest(".cards")||lastCont; const id=draggingId;
+    if(!cont){ cleanupDrag(); return; }
+    e.preventDefault();
+    const idx=cardsIndexAt(cont,e.clientY);
+    cleanupDrag();
+    if(cont.dataset.cardsCol){
+      mutate(()=>api("POST","/api/tasks/"+id+"/move",{columnId:cont.dataset.cardsCol,index:idx}));
+    } else if(cont.dataset.cardsRecur){
+      const t=findTask(id);
+      if(t && t.recur!==cont.dataset.cardsRecur) mutate(()=>api("PATCH","/api/tasks/"+id,{recur:cont.dataset.cardsRecur}));
+    }
+  });
+  board.addEventListener("dragend", cleanupDrag);
 
   async function toggleDone(id){
     const t=findTask(id); if(!t) return;

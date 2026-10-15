@@ -348,6 +348,29 @@ app.delete("/api/tasks/:id", requireAuth, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 
+// Move a task to a list at a given index (drag-and-drop between/within columns).
+app.post("/api/tasks/:id/move", requireAuth, (req, res) => {
+  const t = db.prepare("SELECT * FROM tasks WHERE id=?").get(req.params.id);
+  if (!t) return res.status(404).json({ error: "Task not found" });
+  const b = req.body || {};
+  const col = db.prepare("SELECT id FROM columns WHERE id=?").get(String(b.columnId || ""));
+  if (!col) return res.status(404).json({ error: "List not found" });
+  // dragging a task onto the board clears any recurrence (it leaves the Recurring view)
+  const clearRecur = !!t.recur;
+  const order = db.prepare("SELECT id FROM tasks WHERE column_id=? AND IFNULL(recur,'')='' AND id<>? ORDER BY position, rowid")
+    .all(col.id, t.id).map(r => r.id);
+  let idx = parseInt(b.index, 10); if (!Number.isFinite(idx)) idx = order.length;
+  idx = Math.max(0, Math.min(idx, order.length));
+  order.splice(idx, 0, t.id);
+  const tx = db.transaction(() => {
+    if (clearRecur) db.prepare("UPDATE tasks SET recur='', recur_reset='' WHERE id=?").run(t.id);
+    db.prepare("UPDATE tasks SET column_id=? WHERE id=?").run(col.id, t.id);
+    order.forEach((id, i) => db.prepare("UPDATE tasks SET position=? WHERE id=?").run(i, id));
+  });
+  tx();
+  broadcast(); res.json({ ok: true });
+});
+
 /* ---------------- crew interactions ---------------- */
 const REACTION_EMOJI = ["👍", "🔥", "💩", "🙌", "😅", "❤️", "👀", "🎉"];
 
