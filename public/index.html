@@ -293,7 +293,8 @@
   .mascot.scrub .duck{animation:scrub .5s ease}
   @keyframes scrub{0%,100%{transform:translateY(0) rotate(-2deg)}30%{transform:translateY(-7px) rotate(-7deg)}65%{transform:translateY(0) rotate(6deg)}}
 
-  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(140%);z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
+  .toast:empty{display:none}
+  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(calc(100% + 50px));z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
   .toast.show{transform:translateX(-50%) translateY(0)}
 
   /* auth */
