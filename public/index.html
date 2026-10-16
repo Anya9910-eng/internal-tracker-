@@ -190,14 +190,12 @@
   .dustbunny{position:absolute;bottom:13px;width:26px;height:24px;will-change:transform;font-size:19px;line-height:24px;text-align:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
   .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
   .dust-count b{color:var(--fg)}
-  /* Mascot — a daily "creative type" character (own on-top layer, pinned to the bottom edge) */
-  .mascot{position:fixed;left:0;bottom:calc(6px + env(safe-area-inset-bottom,0px));width:66px;height:88px;z-index:6;pointer-events:none;will-change:transform}
+  /* Mascot — Sweepy the duck (own on-top layer, pinned to the bottom edge) */
+  .mascot{position:fixed;left:0;bottom:calc(6px + env(safe-area-inset-bottom,0px));width:92px;height:72px;z-index:6;pointer-events:none;will-change:transform}
   .mascot .duck-flip{width:100%;height:100%}
   .mascot.flip .duck-flip{transform:scaleX(-1)}
   .mascot .duck{width:100%;height:100%;display:block;transform-origin:center bottom;animation:waddle .6s ease-in-out infinite}
-  @keyframes waddle{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(2deg) translateY(-2px)}}
-  .mascot .name-tag{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:2px 7px;border-radius:999px;white-space:nowrap}
-  .mascot.flip .name-tag{transform:translateX(-50%) scaleX(-1)}
+  @keyframes waddle{0%,100%{transform:rotate(-2.5deg) translateY(0)}50%{transform:rotate(2.5deg) translateY(-2px)}}
   .mascot .say{position:absolute;bottom:64px;left:50%;transform:translateX(-50%) translateY(4px) scale(.85);transform-origin:bottom center;background:#fff;color:#0c1d31;font-weight:700;font-size:11px;padding:5px 11px;border-radius:12px;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;box-shadow:0 8px 18px -8px rgba(0,0,0,.6)}
   .mascot .say::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
   .mascot .say.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
@@ -1089,35 +1087,35 @@
     dustRAF=requestAnimationFrame(animDust);
   }
 
-  /* ---------- Daily mascot: a rotating cast of little characters ---------- */
-  // Shared googly-eyes + little-mouth face, and the sweeping broom (SMIL-animated).
-  const MFACE=(cx,cy)=>`<ellipse cx="${cx-6}" cy="${cy}" rx="3" ry="4.2" fill="#fff"/><ellipse cx="${cx+6}" cy="${cy}" rx="3" ry="4.2" fill="#fff"/><circle cx="${cx-5.3}" cy="${cy-1.4}" r="1.3" fill="#15293f"/><circle cx="${cx+6.7}" cy="${cy-1.4}" r="1.3" fill="#15293f"/><rect x="${cx-4}" y="${cy+6.5}" width="8" height="4.4" rx="2.2" fill="#E7736E"/>`;
-  const MBROOM=`<g class="broom"><line x1="45" y1="52" x2="59" y2="84" stroke="#9c6b3f" stroke-width="3" stroke-linecap="round"/><path d="M52 80 L65 80 L62.5 89 L54.5 89 Z" fill="#E7B24A"/><line x1="57" y1="81.5" x2="57" y2="88.5" stroke="#b98a30" stroke-width="1"/><line x1="60.5" y1="81.5" x2="60.5" y2="88.5" stroke="#b98a30" stroke-width="1"/><animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 45 52;15 45 52;-9 45 52" dur="1.2s" repeatCount="indefinite"/></g>`;
-  const MASCOTS=[
-    {name:"Bramble",emoji:"🍒",body:`<g fill="#E8544B"><rect x="19" y="50" width="28" height="36" rx="12"/><circle cx="33" cy="35" r="17"/><circle cx="21" cy="29" r="6.5"/><circle cx="45" cy="29" r="6.5"/><circle cx="19" cy="41" r="6"/><circle cx="47" cy="41" r="6"/><circle cx="25" cy="20" r="6"/><circle cx="41" cy="20" r="6"/><circle cx="33" cy="17" r="6.5"/><circle cx="23" cy="49" r="5.5"/><circle cx="43" cy="49" r="5.5"/></g>`,face:[33,35]},
-    {name:"Cobble",emoji:"🪨",body:`<rect x="21" y="52" width="24" height="34" rx="7" fill="#8C8B80"/><path d="M33 12 L50 28 L47 50 L19 50 L16 28 Z" fill="#9A988C"/><path d="M33 12 L50 28 L47 50 L33 50 Z" fill="#7E7C6B"/>`,face:[33,33]},
-    {name:"Ember",emoji:"🔥",body:`<rect x="21" y="50" width="24" height="36" rx="11" fill="#F26B1D"/><ellipse cx="33" cy="33" rx="18" ry="20" fill="#F26B1D"/><g stroke="#F79244" stroke-width="2.1" stroke-linecap="round"><line x1="17" y1="22" x2="12" y2="17"/><line x1="21" y1="15" x2="18" y2="9"/><line x1="33" y1="12" x2="33" y2="5"/><line x1="45" y1="15" x2="48" y2="9"/><line x1="49" y1="22" x2="54" y2="17"/><line x1="15" y1="34" x2="9" y2="33"/><line x1="51" y1="34" x2="57" y2="33"/><line x1="17" y1="44" x2="11" y2="47"/><line x1="49" y1="44" x2="55" y2="47"/></g>`,face:[33,33]},
-    {name:"Mosaic",emoji:"🧩",body:`<rect x="19" y="56" width="30" height="30" rx="4" fill="#9FA3A1"/><rect x="17" y="40" width="20" height="20" rx="2" fill="#C9B47E" transform="rotate(-6 27 50)"/><rect x="33" y="38" width="18" height="18" rx="2" fill="#8FB89E" transform="rotate(6 42 47)"/><rect x="23" y="18" width="22" height="22" rx="3" fill="#BCC0BE"/><rect x="39" y="52" width="11" height="11" fill="#D98C8C"/>`,face:[34,29]},
-    {name:"Ripple",emoji:"🌊",body:`<rect x="19" y="20" width="28" height="66" rx="13" fill="#2BA39B"/><g stroke="#1E7E76" stroke-width="2"><line x1="20" y1="30" x2="46" y2="30"/><line x1="19" y1="44" x2="47" y2="44"/><line x1="19" y1="56" x2="47" y2="56"/><line x1="20" y1="68" x2="46" y2="68"/></g><line x1="18" y1="36" x2="48" y2="36" stroke="#263a66" stroke-width="2.4"/>`,face:[33,38]},
-    {name:"Halo",emoji:"🌙",body:`<rect x="21" y="56" width="24" height="30" rx="11" fill="#5566C4"/><circle cx="33" cy="40" r="22" fill="#34A0A4"/><circle cx="33" cy="40" r="16" fill="#E8C845"/><circle cx="33" cy="40" r="12" fill="#E88FB0"/><circle cx="33" cy="14" r="4.5" fill="#eef1f4"/>`,face:[33,40]},
-    {name:"Spark",emoji:"💡",body:`<rect x="21" y="52" width="24" height="34" rx="10" fill="#F2C33D"/><ellipse cx="28" cy="35" rx="11" ry="12" fill="#F2C33D"/><ellipse cx="41" cy="33" rx="10" ry="11" fill="#E7B62C"/><rect x="15" y="18" width="38" height="36" fill="none" stroke="#263a66" stroke-width="1.5"/><circle cx="28" cy="37" r="6" fill="#fff" stroke="#263a66" stroke-width="1.6"/><circle cx="42" cy="37" r="6" fill="#fff" stroke="#263a66" stroke-width="1.6"/><line x1="34" y1="37" x2="36" y2="37" stroke="#263a66" stroke-width="1.6"/><circle cx="28.5" cy="36" r="1.5" fill="#15293f"/><circle cx="42.5" cy="36" r="1.5" fill="#15293f"/><rect x="30" y="45" width="8" height="4" rx="2" fill="#E7736E"/>`,face:null},
-    {name:"Sprout",emoji:"🌵",body:`<g fill="#5BA85A"><rect x="23" y="16" width="22" height="70" rx="11"/><rect x="11" y="44" width="12" height="9" rx="4.5"/><rect x="45" y="40" width="12" height="9" rx="4.5"/></g><g stroke="#4C9150" stroke-width="1.8"><line x1="28" y1="20" x2="28" y2="82"/><line x1="34" y1="18" x2="34" y2="84"/><line x1="40" y1="20" x2="40" y2="82"/></g><circle cx="27" cy="54" r="1.4" fill="#15293f"/><circle cx="41" cy="58" r="1.4" fill="#15293f"/>`,face:[34,36]},
-  ];
-  function todaysMascot(){ const day=Math.floor((Date.now()-new Date().getTimezoneOffset()*60000)/864e5); return MASCOTS[((day%MASCOTS.length)+MASCOTS.length)%MASCOTS.length]; }
-  function mascotHTML(m){ return `<div class="name-tag">${m.name}</div><div class="say"></div><div class="duck-flip"><svg class="duck" viewBox="0 0 66 90" xmlns="http://www.w3.org/2000/svg">${m.body}${m.face?MFACE(m.face[0],m.face[1]):""}${MBROOM}</svg></div>`; }
+  /* ---------- Sweepy the duck (mascot) ---------- */
+  const DUCK_SVG=`<div class="say"></div><div class="duck-flip"><svg class="duck" viewBox="0 0 92 72" xmlns="http://www.w3.org/2000/svg">
+    <line x1="36" y1="55" x2="33" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
+    <line x1="46" y1="55" x2="49" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
+    <path d="M20 37 L7 32 L19 47 Z" fill="#FFD54A"/>
+    <ellipse cx="40" cy="42" rx="23" ry="16" fill="#FFD54A"/>
+    <ellipse cx="37" cy="45" rx="12" ry="8" fill="#F2C236"/>
+    <circle cx="62" cy="26" r="12.5" fill="#FFD54A"/>
+    <path d="M72 22.5 L86 27 L72 31.5 Z" fill="#F7941D"/>
+    <circle cx="65" cy="23" r="2.6" fill="#15293f"/><circle cx="66" cy="22.1" r="0.9" fill="#fff"/>
+    <g class="broom">
+      <line x1="58" y1="40" x2="81" y2="63" stroke="#9c6b3f" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M74 60 L88 60 L85 71 L77 71 Z" fill="#E7B24A"/>
+      <line x1="79" y1="61.5" x2="79" y2="70" stroke="#b98a30" stroke-width="1"/>
+      <line x1="83" y1="61.5" x2="83" y2="70" stroke="#b98a30" stroke-width="1"/>
+      <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 58 40;15 58 40;-9 58 40" dur="1.2s" repeatCount="indefinite"/>
+    </g>
+  </svg></div>`;
   let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false, everDusty=false, dashTarget=null;
   function buildMascot(){
     if(mascotEl) return;
-    const m=todaysMascot();
     mascotEl=document.createElement("div");
     mascotEl.id="mascot"; mascotEl.className="mascot"; mascotEl.setAttribute("aria-hidden","true");
-    mascotEl.innerHTML=mascotHTML(m);
+    mascotEl.innerHTML=DUCK_SVG;
     document.body.appendChild(mascotEl);
-    setTimeout(()=>mascotSay(`Hi, I'm ${m.name} ${m.emoji}`),1000);
   }
   function updateMascot(dt,w){
     if(!mascotEl) return;
-    const duckW=66, maxX=Math.max(14,(w||window.innerWidth||800)-duckW-8);
+    const duckW=92, maxX=Math.max(14,(w||window.innerWidth||800)-duckW-8);
     if(dashTarget!=null){                    // scurrying to a just-finished task's dust
       const diff=dashTarget-mascotX;
       mascotDir=diff<0?-1:1;
@@ -1144,13 +1142,13 @@
     if(bunnies.length){
       let bestX=null,bestD=1e9;
       for(const b of bunnies){ const bx=parseFloat(b.dataset.x)/100*w; const d=Math.abs(bx-mascotX); if(d<bestD){ bestD=d; bestX=bx; } }
-      if(bestX!=null) dashTarget=Math.max(14,Math.min(w-74,bestX-33));
+      if(bestX!=null) dashTarget=Math.max(14,Math.min(w-100,bestX-26));
     }
     setTimeout(sweepBurst,430);
     mascotEl.classList.add("scrub"); setTimeout(()=>mascotEl.classList.remove("scrub"),650);
   }
   function sweepBurst(){
-    const originX=mascotX+33, originY=(window.innerHeight||600)-54;
+    const originX=mascotX+46, originY=(window.innerHeight||600)-54;
     ["✨","✨","✨","💨","💨","🫧"].forEach((em,i)=>{
       const el=document.createElement("div"); el.className="sweep-fx"; el.textContent=em;
       el.style.left=originX+"px"; el.style.top=originY+"px";
@@ -1167,7 +1165,7 @@
     s.textContent=text; s.classList.add("show");
     clearTimeout(sayT); sayT=setTimeout(()=>s.classList.remove("show"),2200);
   }
-  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Sparkling!","Tidy!","On a roll!"];
+  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Quack-tastic!","Tidy!","On a roll!"];
 
   /* ---------- overlays + toast ---------- */
   const scrim=$("#scrim");
