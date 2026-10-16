@@ -1028,6 +1028,14 @@
         <div class="field"><label>Avatar emoji <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— pick up to 3</span></label><div class="emoji-grid" id="emGrid">${ems}</div></div>
         <label class="chkline"><span class="box ${p.showStreak?"on":""}" id="cShow">${p.showStreak?"✓":""}</span><span>Show my streak on the board<small>Others see your 🔥 count next to your name</small></span></label>
         <label class="chkline"><span class="box ${p.paused?"on":""}" id="cPause">${p.paused?"✓":""}</span><span>Pause: on leave or sick<small>Your streak won't reset while this is on</small></span></label>
+        <div class="section-cap">Change password</div>
+        <div class="field"><label for="pwCur">Current password</label><input class="in" id="pwCur" type="password" autocomplete="current-password" placeholder="Current password"></div>
+        <div class="row2">
+          <div class="field"><label for="pwNew">New password</label><input class="in" id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+          <div class="field"><label for="pwNew2">Confirm new</label><input class="in" id="pwNew2" type="password" autocomplete="new-password" placeholder="Repeat it"></div>
+        </div>
+        <div id="pwMsg" style="display:none;font-size:12px;margin:2px 0 0"></div>
+        <button class="btn ghost sm" id="pwSave" type="button" style="margin-top:4px">Update password</button>
         <div class="section-cap">My achievements</div><div class="ach-grid">${achs}</div>
         <div class="section-cap">Crew (${state.users.length})</div><div class="crew" id="crewList">${crew}</div>
         <button class="btn" id="pSave" style="margin-top:6px">Save card</button>
@@ -1053,6 +1061,19 @@
       closeSheet();
       try{ const r=await api("PATCH","/api/me",body); state.me=r.user; renderProfile(); await loadBoard(); }
       catch(err){ toast("⚠️ "+err.message); }
+    };
+    const pwSave=$("#pwSave");
+    if(pwSave) pwSave.onclick=async()=>{
+      const msg=$("#pwMsg"), cur=$("#pwCur").value, nw=$("#pwNew").value, nw2=$("#pwNew2").value;
+      const show=(text,ok)=>{ msg.style.display="block"; msg.style.color=ok?"var(--good,#49c17a)":"#ff8f78"; msg.textContent=text; };
+      if(!cur||!nw){ show("Fill in your current and new password.",false); return; }
+      if(nw.length<8){ show("New password must be at least 8 characters.",false); return; }
+      if(nw!==nw2){ show("New passwords don't match.",false); return; }
+      pwSave.disabled=true;
+      try{ await api("POST","/api/me/password",{current:cur,next:nw}); show("Password updated ✓",true);
+        $("#pwCur").value=$("#pwNew").value=$("#pwNew2").value=""; }
+      catch(err){ show("⚠️ "+err.message,false); }
+      finally{ pwSave.disabled=false; }
     };
   }
   $("#profBtn").onclick=openProfile;

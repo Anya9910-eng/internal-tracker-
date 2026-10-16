@@ -112,6 +112,23 @@ app.patch("/api/me", requireAuth, (req, res) => {
   res.json({ user: auth.publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(cur.id)) });
 });
 
+/* change own password */
+app.post("/api/me/password", requireAuth, (req, res) => {
+  const b = req.body || {};
+  const current = String(b.current || "");
+  const next = String(b.next || "");
+  const cur = req.user;
+  if (!auth.verifyPassword(current, cur.pw_salt, cur.pw_hash)) {
+    return res.status(400).json({ error: "Current password is incorrect." });
+  }
+  if (next.length < 8) {
+    return res.status(400).json({ error: "New password must be at least 8 characters." });
+  }
+  const { salt, hash } = auth.hashPassword(next);
+  db.prepare("UPDATE users SET pw_salt=?, pw_hash=? WHERE id=?").run(salt, hash, cur.id);
+  res.json({ ok: true });
+});
+
 /* ---------------- board read ---------------- */
 function goalProgress(g) {
   const linked = db.prepare("SELECT done FROM tasks WHERE goal_id=?").all(g.id);
