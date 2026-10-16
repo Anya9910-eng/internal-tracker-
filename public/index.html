@@ -1078,7 +1078,7 @@
   function animDust(now){
     const w=window.innerWidth||800, dt=Math.min(50,now-t0); t0=now;
     for(const b of bunnies){
-      let x=parseFloat(b.dataset.x)+parseFloat(b.dataset.sp)*dt*0.012;
+      let x=parseFloat(b.dataset.x)+parseFloat(b.dataset.sp)*dt*0.004;
       if(x>104)x=-4; if(x<-4)x=104; b.dataset.x=x;
       const ph=parseFloat(b.dataset.ph)+dt*0.003; b.dataset.ph=ph;
       b.style.transform=`translate(${x/100*w}px, ${Math.sin(ph)*7}px) scale(${b.dataset.sc})`;
