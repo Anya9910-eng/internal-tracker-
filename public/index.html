@@ -188,6 +188,9 @@
   /* dust layer */
   .dust-layer{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;z-index:1;overflow:hidden}
   .dustbunny{position:absolute;bottom:13px;width:26px;height:24px;will-change:transform;font-size:19px;line-height:24px;text-align:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  .vomit-layer{position:fixed;left:0;right:0;bottom:0;height:120px;z-index:1;pointer-events:none;opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
+  .vomit-layer.on{opacity:1;transform:translateY(0)}
+  .vomit-layer svg{width:100%;height:100%;display:block}
   .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
   .dust-count b{color:var(--fg)}
   /* Mascot — Sweepy the duck (own on-top layer, pinned to the bottom edge) */
@@ -382,6 +385,7 @@
     </div>
     <div class="board" id="board"></div>
   </div>
+  <div class="vomit-layer" id="vomitLayer" aria-hidden="true"></div>
   <div class="dust-layer" id="dustLayer" aria-hidden="true"></div>
   <div class="dust-count" id="dustCount"></div>
 </div>
@@ -1063,9 +1067,19 @@
   /* ---------- dust layer ---------- */
   const dustLayer=$("#dustLayer"); let bunnies=[], dustRAF=null, t0=performance.now();
   function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
+  const VOMIT_SVG=`<svg viewBox="0 0 1200 140" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#8aa31f"><path d="M120 70 q6 24 0 34 q-6 10 -12 0 q-6 -10 0 -34 z"/><path d="M430 66 q7 30 0 42 q-7 12 -14 0 q-7 -12 0 -42 z"/><path d="M760 72 q6 22 0 32 q-6 10 -12 0 q-6 -10 0 -32 z"/><path d="M980 68 q7 26 0 38 q-7 12 -14 0 q-7 -12 0 -38 z"/></g>
+    <path d="M0 140 L0 96 Q90 74 180 90 Q270 106 350 86 Q440 64 530 90 Q620 110 710 86 Q810 66 905 92 Q1000 110 1090 86 Q1150 76 1200 94 L1200 140 Z" fill="#9bb02a"/>
+    <path d="M0 140 L0 110 Q120 96 240 108 Q360 118 480 104 Q600 92 720 108 Q840 120 960 106 Q1080 94 1200 110 L1200 140 Z" fill="#7f941c"/>
+    <g><circle cx="150" cy="108" r="9" fill="#c6922f"/><circle cx="300" cy="116" r="6" fill="#b06b23"/><circle cx="520" cy="110" r="10" fill="#caa23a"/><circle cx="680" cy="118" r="5" fill="#b06b23"/><circle cx="860" cy="108" r="8" fill="#c6922f"/><circle cx="1030" cy="116" r="7" fill="#b78b2c"/><ellipse cx="420" cy="118" rx="12" ry="6" fill="#6f8418"/><ellipse cx="930" cy="120" rx="14" ry="6" fill="#6f8418"/></g>
+    <g fill="#c9dd57" opacity="0.8"><circle cx="210" cy="100" r="4"/><circle cx="560" cy="98" r="5"/><circle cx="770" cy="102" r="3.5"/><circle cx="1000" cy="100" r="4"/></g>
+    <g fill="#9bb02a"><circle cx="90" cy="58" r="4"/><circle cx="260" cy="50" r="3"/><circle cx="600" cy="54" r="4.5"/><circle cx="840" cy="48" r="3"/><circle cx="1120" cy="56" r="4"/></g>
+  </svg>`;
+  const vomitLayer=$("#vomitLayer");
   function syncDust(){
     const total=openDustTotal();
     $("#dustCount").innerHTML=`<b>${total}</b> 🤢 Ugh to clear`;
+    if(vomitLayer){ if(!vomitLayer.innerHTML) vomitLayer.innerHTML=VOMIT_SVG; vomitLayer.classList.toggle("on", total>50); }
     const want=Math.min(42,Math.ceil(total/2));
     while(bunnies.length<want){ const b=document.createElement("div"); b.className="dustbunny";
       b.textContent='🤢';
