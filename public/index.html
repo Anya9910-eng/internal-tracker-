@@ -1087,16 +1087,18 @@
     dustRAF=requestAnimationFrame(animDust);
   }
 
-  /* ---------- Sweepy the duck (mascot) ---------- */
+  /* ---------- Sweepy the pigeon (mascot) ---------- */
   const DUCK_SVG=`<div class="say"></div><div class="duck-flip"><svg class="duck" viewBox="0 0 92 72" xmlns="http://www.w3.org/2000/svg">
-    <line x1="36" y1="55" x2="33" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
-    <line x1="46" y1="55" x2="49" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
-    <path d="M20 37 L7 32 L19 47 Z" fill="#FFD54A"/>
-    <ellipse cx="40" cy="42" rx="23" ry="16" fill="#FFD54A"/>
-    <ellipse cx="37" cy="45" rx="12" ry="8" fill="#F2C236"/>
-    <circle cx="62" cy="26" r="12.5" fill="#FFD54A"/>
-    <path d="M72 22.5 L86 27 L72 31.5 Z" fill="#F7941D"/>
-    <circle cx="65" cy="23" r="2.6" fill="#15293f"/><circle cx="66" cy="22.1" r="0.9" fill="#fff"/>
+    <line x1="37" y1="58" x2="35" y2="68" stroke="#E39AA0" stroke-width="3" stroke-linecap="round"/>
+    <line x1="46" y1="58" x2="49" y2="68" stroke="#E39AA0" stroke-width="3" stroke-linecap="round"/>
+    <path d="M19 40 L4 33 L17 53 Z" fill="#7D889E"/>
+    <ellipse cx="41" cy="45" rx="24" ry="17" fill="#8C96AB"/>
+    <ellipse cx="38" cy="49" rx="15" ry="11" fill="#AEB7C7"/>
+    <path d="M30 34 Q49 29 59 42 Q45 47 32 44 Z" fill="#7D889E"/>
+    <circle cx="63" cy="24" r="12" fill="#8C96AB"/>
+    <path d="M52 30 Q58 37 65 33 Q60 41 51 38 Z" fill="#3FB6A8" opacity="0.85"/>
+    <path d="M73 21 L85 24.5 L73 28 Z" fill="#E8923A"/>
+    <circle cx="66" cy="22" r="2.6" fill="#15293f"/><circle cx="67" cy="21.1" r="0.9" fill="#fff"/>
     <g class="broom">
       <line x1="58" y1="40" x2="81" y2="63" stroke="#9c6b3f" stroke-width="3.4" stroke-linecap="round"/>
       <path d="M74 60 L88 60 L85 71 L77 71 Z" fill="#E7B24A"/>
@@ -1165,7 +1167,7 @@
     s.textContent=text; s.classList.add("show");
     clearTimeout(sayT); sayT=setTimeout(()=>s.classList.remove("show"),2200);
   }
-  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Quack-tastic!","Tidy!","On a roll!"];
+  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Coo-tastic!","Tidy!","On a roll!"];
 
   /* ---------- overlays + toast ---------- */
   const scrim=$("#scrim");
