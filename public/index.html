@@ -310,6 +310,7 @@
   .auth .err{background:var(--crit-soft);border:1px solid var(--crit);color:#ffb3a3;border-radius:9px;padding:9px 12px;font-size:12.5px}
   .auth .switch{text-align:center;color:var(--muted);font-size:12.5px;margin-top:14px}
   .auth .switch button{background:none;border:none;color:var(--accent-bright);font-weight:700;padding:0;font-size:12.5px}
+  .auth .switch .sw-sep{margin:0 8px;color:var(--line-strong)}
 
   @media (max-width:640px){
     .focus{order:5;width:100%;justify-content:space-between}
@@ -457,8 +458,9 @@
     $("#aPass").autocomplete = signup ? "new-password" : "current-password";
     $("#authSwitch").innerHTML = signup
       ? `Already have an account? <button type="button" id="toLogin">Sign in</button>`
-      : `New here? <button type="button" id="toSignup">Create an account</button>`;
+      : `New here? <button type="button" id="toSignup">Create an account</button><span class="sw-sep">·</span><button type="button" id="toForgot">Forgot password?</button>`;
     const sw=$("#"+(signup?"toLogin":"toSignup")); if(sw) sw.onclick=()=>{ mode=signup?"login":"signup"; hideErr(); renderAuthMode(); };
+    const fg=$("#toForgot"); if(fg) fg.onclick=()=>showErr("No email resets yet. Ask your workspace admin to reset your password — they do it from their profile → Crew, and give you a temporary one to log in with.");
     hideErr();
   }
   function showErr(m){ const e=$("#authErr"); e.textContent=m; e.hidden=false; }
@@ -535,7 +537,7 @@
   async function loadBoard(){
     try{
       const d=await api("GET","/api/board");
-      state.me=d.me; state.columns=d.columns; state.recurring=d.recurring||[]; state.goals=d.goals||[]; state.users=d.users;
+      state.me=d.me; state.columns=d.columns; state.recurring=d.recurring||[]; state.goals=d.goals||[]; state.users=d.users; state.adminId=d.adminId;
       renderProfile(); renderGoals(); renderBoard(); syncDust();
     }catch(err){ if(err.status===401) showAuth(); }
   }
@@ -1004,7 +1006,7 @@
       const me=u.id===p.id;
       const actions=me
         ? `<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span>`
-        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">🤢</button></span>`;
+        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">🤢</button>${p.id===state.adminId?`<button data-reset="${u.id}" data-name="${esc(u.name)}" title="Reset password">🔑</button>`:""}</span>`;
       return `<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span>`
         +`<span><span class="nm">${esc(u.name)}${me?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}`
         +`${u.chores?`<span class="toss-n">· ${u.chores}🤢 caught</span>`:""}</span>`
@@ -1055,6 +1057,7 @@
       if((m=e.target.closest("[data-hi]"))){ sendNudge(m.dataset.hi,"highfive"); toast("🙌 High-five sent"); }
       else if((m=e.target.closest("[data-poke]"))){ sendNudge(m.dataset.poke,"poke"); toast("👈 Poke sent"); }
       else if((m=e.target.closest("[data-pass]"))){ openPassPicker(m,m.dataset.pass,m.dataset.name); }
+      else if((m=e.target.closest("[data-reset]"))){ resetTeammatePw(m.dataset.reset, m.dataset.name); }
     };
     $("#pLogout").onclick=async()=>{ try{ await api("POST","/api/auth/logout"); }catch(e){} state.me=null; closeSheet(); showAuth(); };
     $("#pSave").onclick=async()=>{
@@ -1078,6 +1081,22 @@
     };
   }
   $("#profBtn").onclick=openProfile;
+
+  async function resetTeammatePw(id, name){
+    if(!confirm(`Reset ${name||"this teammate"}'s password?\nYou'll get a temporary password to give them.`)) return;
+    try{
+      const r=await api("POST","/api/users/"+id+"/reset-password",{});
+      openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Password reset">
+        <div class="sheet-head"><h2>Temporary password</h2><button class="x" data-close aria-label="Close">✕</button></div>
+        <div class="sheet-body">
+          <p style="color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5">Give <b style="color:var(--fg)">${esc(r.name||name||"them")}</b> this temporary password. They sign in with it, then set their own from their profile → Change password.</p>
+          <div class="field"><label>Temporary password</label><input class="in" id="tmpPw" readonly value="${esc(r.tempPassword)}" style="font-family:var(--font-mono);font-weight:700;letter-spacing:.5px"></div>
+          <button class="btn" id="tmpCopy" type="button" style="margin-top:4px">Copy</button>
+        </div></div>`);
+      const inp=$("#tmpPw"); if(inp) inp.onclick=()=>inp.select();
+      const cp=$("#tmpCopy"); if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(r.tempPassword); toast("Copied ✓"); }catch(e){ if(inp) inp.select(); toast("Select it and copy"); } };
+    }catch(err){ toast("⚠️ "+err.message); }
+  }
 
   function renderProfile(){
     const p=state.me; if(!p) return;

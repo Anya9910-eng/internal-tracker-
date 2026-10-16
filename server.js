@@ -129,6 +129,25 @@ app.post("/api/me/password", requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+/* The workspace admin is the earliest-registered user. */
+function adminId() {
+  const r = db.prepare("SELECT id FROM users ORDER BY created_at, rowid LIMIT 1").get();
+  return r ? r.id : null;
+}
+
+/* admin resets a teammate's password to a temporary one (no email needed) */
+app.post("/api/users/:id/reset-password", requireAuth, (req, res) => {
+  if (req.user.id !== adminId()) {
+    return res.status(403).json({ error: "Only the workspace admin can reset passwords." });
+  }
+  const target = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
+  if (!target) return res.status(404).json({ error: "User not found." });
+  const temp = "Reset-" + Math.random().toString(36).slice(2, 8);
+  const { salt, hash } = auth.hashPassword(temp);
+  db.prepare("UPDATE users SET pw_salt=?, pw_hash=? WHERE id=?").run(salt, hash, target.id);
+  res.json({ ok: true, tempPassword: temp, name: target.name, email: target.email });
+});
+
 /* ---------------- board read ---------------- */
 function goalProgress(g) {
   const linked = db.prepare("SELECT done FROM tasks WHERE goal_id=?").all(g.id);
@@ -197,7 +216,8 @@ app.get("/api/board", requireAuth, (req, res) => {
     columns: cols.map(c => ({ id: c.id, name: c.name, tasks: byCol[c.id] })),
     recurring,
     goals: allGoals(),
-    users
+    users,
+    adminId: adminId()
   });
 });
 
