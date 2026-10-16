@@ -188,9 +188,11 @@
   /* dust layer */
   .dust-layer{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;z-index:1;overflow:hidden}
   .dustbunny{position:absolute;bottom:13px;width:26px;height:24px;will-change:transform;font-size:19px;line-height:24px;text-align:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-  .vomit-layer{position:fixed;left:0;right:0;bottom:0;height:150px;z-index:1;pointer-events:none;opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
-  .vomit-layer.on{opacity:1;transform:translateY(0)}
-  .vomit-layer svg{width:100%;height:100%;display:block}
+  .vomit-layer{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .6s ease}
+  .vomit-layer.on{opacity:1}
+  .vomit-body{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(#89a31d,#556d0f);transition:height .9s cubic-bezier(.33,.1,.25,1)}
+  .vomit-surf{position:absolute;left:0;right:0;bottom:0;height:96px;transition:bottom .9s cubic-bezier(.33,.1,.25,1)}
+  .vomit-surf svg{width:100%;height:100%;display:block}
   .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
   .dust-count b{color:var(--fg)}
   /* Mascot — Sweepy the duck (own on-top layer, pinned to the bottom edge) */
@@ -1068,37 +1070,35 @@
   const dustLayer=$("#dustLayer"); let bunnies=[], dustRAF=null, t0=performance.now();
   function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
   const vomitLayer=$("#vomitLayer");
-  function buildVomit(){
-    const W=1200,H=150,base=116,rnd=(a,b)=>a+Math.random()*(b-a),i=n=>n|0;
-    const P=[];
-    P.push(`<defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7c02f"/><stop offset="1" stop-color="#76901a"/></linearGradient></defs>`);
-    // darker back pool
-    let d2=`M0 ${H} L0 ${base-5}`,x=0;
-    while(x<W){ const nx=Math.min(W,x+rnd(80,130)); d2+=` Q ${i((x+nx)/2)} ${i(base-5-rnd(0,12))} ${i(nx)} ${i(base-5)}`; x=nx; }
-    P.push(`<path d="${d2} L${W} ${H} Z" fill="#657d14"/>`);
-    // main lumpy puddle
-    let d=`M0 ${H} L0 ${base}`; x=0;
-    while(x<W){ const nx=Math.min(W,x+rnd(42,82)); d+=` Q ${i((x+nx)/2)} ${i(base-rnd(-3,28))} ${i(nx)} ${i(base-rnd(-3,7))}`; x=nx; }
-    P.push(`<path d="${d} L${W} ${H} Z" fill="url(#vg)"/>`);
-    // blobby lumps straddling the edge to kill the "hill" line
-    for(let k=0;k<16;k++){ const r=rnd(7,19); P.push(`<ellipse cx="${i(rnd(20,W-20))}" cy="${i(base+rnd(-7,7))}" rx="${i(r)}" ry="${i(r*0.72)}" fill="url(#vg)"/>`); }
-    // dark pooled patches (depth)
-    for(let k=0;k<6;k++) P.push(`<ellipse cx="${i(rnd(60,W-60))}" cy="${i(base+rnd(14,30))}" rx="${i(rnd(16,34))}" ry="${i(rnd(4,8))}" fill="#4f6610" opacity="0.5"/>`);
-    // wet sheen
-    for(let k=0;k<7;k++) P.push(`<ellipse cx="${i(rnd(40,W-40))}" cy="${i(base+rnd(1,12))}" rx="${i(rnd(10,26))}" ry="${i(rnd(3,6))}" fill="#cfe463" opacity="0.4"/>`);
-    // chunks
+  // messy top surface of the rising bile (lumpy crest + chunks + splatter above the waterline)
+  function buildSurf(){
+    const W=1200,H=96,wl=56,rnd=(a,b)=>a+Math.random()*(b-a),i=n=>n|0,P=[];
+    P.push(`<defs><linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7c02f"/><stop offset="1" stop-color="#7c951a"/></linearGradient></defs>`);
+    let d=`M0 ${H} L0 ${wl}`,x=0;
+    while(x<W){ const nx=Math.min(W,x+rnd(42,82)); d+=` Q ${i((x+nx)/2)} ${i(wl-rnd(-4,24))} ${i(nx)} ${i(wl-rnd(-4,6))}`; x=nx; }
+    P.push(`<path d="${d} L${W} ${H} Z" fill="url(#vs)"/>`);
+    for(let k=0;k<16;k++){ const r=rnd(7,18); P.push(`<ellipse cx="${i(rnd(20,W-20))}" cy="${i(wl+rnd(-6,6))}" rx="${i(r)}" ry="${i(r*0.72)}" fill="url(#vs)"/>`); }
+    for(let k=0;k<6;k++) P.push(`<ellipse cx="${i(rnd(40,W-40))}" cy="${i(wl+rnd(2,12))}" rx="${i(rnd(10,26))}" ry="${i(rnd(3,6))}" fill="#cfe463" opacity="0.4"/>`);
     const cc=['#d98a2e','#a85f20','#e6c25c','#c6922f'];
-    for(let k=0;k<13;k++) P.push(`<circle cx="${i(rnd(30,W-30))}" cy="${i(base+rnd(8,26))}" r="${i(rnd(3,8))}" fill="${cc[i(Math.random()*cc.length)]}"/>`);
-    // bubbles with a tiny highlight
-    for(let k=0;k<9;k++){ const cx=i(rnd(30,W-30)),cy=i(base+rnd(3,15)),r=i(rnd(3,6)); P.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#b4cb43"/><circle cx="${i(cx-r*0.3)}" cy="${i(cy-r*0.3)}" r="${Math.max(1,i(r*0.4))}" fill="#dcec85"/>`); }
-    // splatter droplets, sparser and smaller higher up
-    for(let k=0;k<28;k++){ const up=rnd(2,56),cy=base-up,r=Math.max(1.4,rnd(2,7)*(1-up/78)); P.push(`<ellipse cx="${i(rnd(10,W-10))}" cy="${i(cy)}" rx="${i(r)}" ry="${i(r*rnd(1,1.7))}" fill="#86a01d"/>`); }
-    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">${P.join('')}</svg>`;
+    for(let k=0;k<12;k++) P.push(`<circle cx="${i(rnd(30,W-30))}" cy="${i(wl+rnd(8,32))}" r="${i(rnd(3,8))}" fill="${cc[i(Math.random()*cc.length)]}"/>`);
+    for(let k=0;k<8;k++){ const cx=i(rnd(30,W-30)),cy=i(wl+rnd(4,24)),r=i(rnd(3,6)); P.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#b4cb43"/><circle cx="${i(cx-r*0.3)}" cy="${i(cy-r*0.3)}" r="${Math.max(1,i(r*0.4))}" fill="#dcec85"/>`); }
+    for(let k=0;k<22;k++){ const up=rnd(2,wl-2),cy=wl-up,r=Math.max(1.3,rnd(2,6)*(1-up/wl)); P.push(`<ellipse cx="${i(rnd(10,W-10))}" cy="${i(cy)}" rx="${i(r)}" ry="${i(r*rnd(1,1.6))}" fill="#86a01d"/>`); }
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${P.join('')}</svg>`;
   }
+  function ensureVomit(){ if(vomitLayer && !vomitLayer.firstChild){ vomitLayer.innerHTML=`<div class="vomit-body" id="vomitBody"></div><div class="vomit-surf" id="vomitSurf">${buildSurf()}</div>`; } }
+  // rising flood: more Ugh over 50 → the bile climbs higher up the screen
+  function sizeVomit(total){
+    const vh=window.innerHeight||700, over=Math.max(0,total-50);
+    const h=Math.min(vh*0.92, over>0?40+over*0.0065*vh:0);
+    const body=document.getElementById("vomitBody"), surf=document.getElementById("vomitSurf");
+    if(body) body.style.height=h+"px";
+    if(surf) surf.style.bottom=Math.max(0,h-22)+"px";
+  }
+  window.addEventListener("resize",()=>{ if(vomitLayer&&vomitLayer.classList.contains("on")) sizeVomit(openDustTotal()); });
   function syncDust(){
     const total=openDustTotal();
     $("#dustCount").innerHTML=`<b>${total}</b> 🤢 Ugh to clear`;
-    if(vomitLayer){ if(!vomitLayer.innerHTML) vomitLayer.innerHTML=buildVomit(); vomitLayer.classList.toggle("on", total>50); }
+    if(vomitLayer){ ensureVomit(); vomitLayer.classList.toggle("on", total>50); sizeVomit(total); }
     const want=Math.min(42,Math.ceil(total/2));
     while(bunnies.length<want){ const b=document.createElement("div"); b.className="dustbunny";
       b.textContent='🤢';
