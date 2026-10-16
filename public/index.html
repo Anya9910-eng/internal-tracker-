@@ -378,7 +378,7 @@
         <button data-view="projects">📁 Projects <span class="tab-count" id="projCount"></span></button>
         <button data-view="recurring">🔁 Recurring <span class="tab-count" id="recurCount"></span></button>
       </div>
-      <span class="hint" id="boardHint">Finishing a task sweeps its shit away • everyone sees the same board live</span>
+      <span class="hint" id="boardHint">Finishing a task clears its Ugh factor • everyone sees the same board live</span>
     </div>
     <div class="board" id="board"></div>
   </div>
@@ -500,12 +500,12 @@
   function handleNudge(p){
     const who=esc(p.fromName||"Someone");
     let msg;
-    if(p.kind==="chore") msg=`${p.emoji||"💩"} ${who} passed you a chore: ${esc(p.text||"a task")}`;
+    if(p.kind==="chore") msg=`${p.emoji||"🤢"} ${who} passed you a chore: ${esc(p.text||"a task")}`;
     else if(p.kind==="highfive") msg=`🙌 ${who} high-fived you!`;
     else if(p.kind==="poke") msg=`👈 ${who} poked you!`;
     else msg=`${p.emoji||"💩"} ${who} tossed ${p.emoji||"💩"} at you!`;
     toast(msg);
-    flingEmoji(p.emoji||(p.kind==="highfive"?"🙌":p.kind==="poke"?"👈":"💩"), p.kind==="chore"?5:4);
+    flingEmoji(p.emoji||(p.kind==="highfive"?"🙌":p.kind==="poke"?"👈":"🤢"), p.kind==="chore"?5:4);
   }
   function flingEmoji(emoji,n){
     const W=window.innerWidth||800, H=window.innerHeight||600;
@@ -613,7 +613,7 @@
     const hint=$("#boardHint");
     if(hint) hint.textContent = view==="recurring" ? "Recurring tasks auto-uncheck when their cycle rolls over"
       : view==="projects" ? "Your tasks grouped by project • drag a card to another project to re-file it"
-      : "Finishing a task sweeps its shit away • everyone sees the same board live";
+      : "Finishing a task clears its Ugh factor • everyone sees the same board live";
     if(view==="recurring") renderRecurringBoard();
     else if(view==="projects") renderProjectsBoard();
     else renderShiftBoard();
@@ -700,9 +700,9 @@
         <button class="chk ${t.done?"on":""}" data-done="${t.id}" aria-label="Toggle done">${t.done?"✓":""}</button>
         <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
         <div class="dust-ctl">
-          <button data-dust="-1" data-t="${t.id}" aria-label="Less shit">−</button>
-          <span class="n" title="shit">${t.dust}<span class="du">💩</span></span>
-          <button data-dust="1" data-t="${t.id}" aria-label="More shit">+</button>
+          <button data-dust="-1" data-t="${t.id}" aria-label="Less Ugh">−</button>
+          <span class="n" title="Ugh factor">${t.dust}<span class="du">🤢</span></span>
+          <button data-dust="1" data-t="${t.id}" aria-label="More Ugh">+</button>
         </div></div>
       ${metaRow}
       ${(t.reactions&&t.reactions.length)
@@ -753,14 +753,14 @@
     if(!list.length) list=open;                         // otherwise any open task
     if(!list.length){ toast("No open chores to pass 🎉"); return; }
     const pop=document.createElement("div"); pop.className="rx-pop pass-pop"; pop.id="rxPop";
-    pop.innerHTML=`<div class="pass-h">Pass a chore to ${esc(toName||"them")} 💩</div>`
-      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust}💩</span></button>`).join("");
+    pop.innerHTML=`<div class="pass-h">Pass a chore to ${esc(toName||"them")} 🤢</div>`
+      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust}🤢</span></button>`).join("");
     document.body.appendChild(pop);
     const r=anchor.getBoundingClientRect();
     pop.style.position="fixed"; pop.style.zIndex=50;
     pop.style.left=Math.max(12,Math.min(r.right-pop.offsetWidth, (window.innerWidth||800)-pop.offsetWidth-12))+"px";
     pop.style.top=(r.bottom+6)+"px";
-    pop.onclick=ev=>{ const b=ev.target.closest("button[data-tid]"); if(!b) return; closeReactPop(); mutate(()=>api("POST","/api/tasks/"+b.dataset.tid+"/pass",{toUserId})); toast("💩 Chore passed!"); };
+    pop.onclick=ev=>{ const b=ev.target.closest("button[data-tid]"); if(!b) return; closeReactPop(); mutate(()=>api("POST","/api/tasks/"+b.dataset.tid+"/pass",{toUserId})); toast("🤢 Chore passed!"); };
     setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
   }
   $("#board").addEventListener("change", e=>{
@@ -853,9 +853,9 @@
           <div class="field"><label for="tProj">Project / area</label><input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
           <div class="field"><label for="tWho">Assignee</label><select class="in" id="tWho">${teamOpts}</select></div>
         </div>
-        ${otherOpts?`<div class="field"><label>Pass this chore <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— reassign it and dump the 💩 on a teammate (they get pinged)</span></label>
+        ${otherOpts?`<div class="field"><label>Pass this chore <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— reassign it and dump the 🤢 on a teammate (they get pinged)</span></label>
           <div style="display:flex;gap:8px"><select class="in" id="tPassTo"><option value="">Pick a teammate…</option>${otherOpts}</select>
-          <button class="btn ghost sm" id="tPass" type="button" style="white-space:nowrap">Pass 💩</button></div></div>`:""}
+          <button class="btn ghost sm" id="tPass" type="button" style="white-space:nowrap">Pass 🤢</button></div></div>`:""}
         <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— it auto-unchecks each cycle</span></label>
           <div class="seg" id="tRecur">
             <button data-v="" class="${!t.recur?"on":""}">Doesn't repeat</button>
@@ -870,9 +870,9 @@
           </div>
         </div>
         <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
-        <div class="dustbox"><div class="hd">💩 Shit <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
+        <div class="dustbox"><div class="hd">🤢 Ugh factor <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
           <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
-          <p>Shit piles up at the bottom of the board. Finish the task and its shit gets swept away.</p></div>
+          <p>The Ugh factor piles up at the bottom of the board. Finish the task and it gets swept away.</p></div>
         <div class="timerbox"><div class="hd">⏱️ Task timer</div>
           <div class="tdisp" id="tTime">${fmt(taskTimer.id===t.id?taskTimer.rem:0)}</div>
           <div class="tctl"><input class="in" id="tMin" type="number" min="1" placeholder="minutes" style="max-width:120px">
@@ -907,7 +907,7 @@
     $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; anchor=null;
       document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); updateAnchorUI(); };
     updateAnchorUI();
-    const passBtn=$("#tPass"); if(passBtn) passBtn.onclick=()=>{ const to=$("#tPassTo").value; if(!to){ toast("Pick a teammate first"); return; } closeSheet(); mutate(()=>api("POST","/api/tasks/"+t.id+"/pass",{toUserId:to})); toast("💩 Chore passed!"); };
+    const passBtn=$("#tPass"); if(passBtn) passBtn.onclick=()=>{ const to=$("#tPassTo").value; if(!to){ toast("Pick a teammate first"); return; } closeSheet(); mutate(()=>api("POST","/api/tasks/"+t.id+"/pass",{toUserId:to})); toast("🤢 Chore passed!"); };
     let dust=t.dust; const dn=$("#tDustN");
     $("#tDustUp").onclick=()=>{ dust++; dn.textContent=dust; };
     $("#tDustDown").onclick=()=>{ dust=Math.max(0,dust-1); dn.textContent=dust; };
@@ -980,8 +980,8 @@
     {id:"ten",ic:"🔟",name:"On a roll",desc:"Close 10 tasks",on:s.closed>=10},
     {id:"fifty",ic:"🧽",name:"Housekeeping hero",desc:"Close 50 tasks",on:s.closed>=50},
     {id:"hundred",ic:"💎",name:"Diamond status",desc:"Close 100 tasks",on:s.closed>=100},
-    {id:"deep",ic:"⛰️",name:"Deep clean",desc:"Finish a task worth 10+ shit",on:!!s.deepClean},
-    {id:"spot",ic:"✨",name:"Spotless",desc:"Clear 50 shit total",on:s.sweptDust>=50},
+    {id:"deep",ic:"⛰️",name:"Deep clean",desc:"Finish a task worth 10+ Ugh",on:!!s.deepClean},
+    {id:"spot",ic:"✨",name:"Spotless",desc:"Clear 50 Ugh total",on:s.sweptDust>=50},
     {id:"early",ic:"🌅",name:"Early check-in",desc:"Finish a task 5–8 AM",on:!!s.early},
     {id:"night",ic:"🌙",name:"Night auditor",desc:"Finish a task midnight–5 AM",on:!!s.night},
     {id:"fire",ic:"🔥",name:"Week on fire",desc:"Hit a 7-day streak",on:(me.streakDays||0)>=7}
@@ -997,10 +997,10 @@
       const me=u.id===p.id;
       const actions=me
         ? `<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span>`
-        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">💩</button></span>`;
+        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">🤢</button></span>`;
       return `<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span>`
         +`<span><span class="nm">${esc(u.name)}${me?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}`
-        +`${u.chores?`<span class="toss-n">· ${u.chores}💩 caught</span>`:""}</span>`
+        +`${u.chores?`<span class="toss-n">· ${u.chores}🤢 caught</span>`:""}</span>`
         +`${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}${actions}</div>`;
     };
     const dayCrew=state.users.filter(u=>u.shift!=="night");
@@ -1065,10 +1065,10 @@
   function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
   function syncDust(){
     const total=openDustTotal();
-    $("#dustCount").innerHTML=`<b>${total}</b> 💩 shit to sweep`;
+    $("#dustCount").innerHTML=`<b>${total}</b> 🤢 Ugh to clear`;
     const want=Math.min(42,Math.ceil(total/2));
     while(bunnies.length<want){ const b=document.createElement("div"); b.className="dustbunny";
-      b.textContent='💩';
+      b.textContent='🤢';
       b.dataset.x=Math.random()*100; b.dataset.sp=(0.4+Math.random()*0.7)*(Math.random()<.5?-1:1);
       b.dataset.ph=Math.random()*Math.PI*2; b.dataset.sc=0.7+Math.random()*0.8;
       b.style.opacity=0.55+Math.random()*0.4; dustLayer.appendChild(b); bunnies.push(b); }
