@@ -94,7 +94,7 @@ app.post("/api/users/:id/reset-password", requireAuth, (req, res) => {
 const T = {                       // поле → тип: s=string, r=real, b=bool, u=user-id(string)
   contracts: { table: "contracts", cols: { tender_no:"s", contract_no:"s", buyer:"s", edrpou:"s", contact_person:"s", phone:"s", email:"s",
       manager_id:"u", win_date:"s", sign_date:"s", total_sum:"r", valid_until:"s", total_volume:"s", plan_qty:"r", unit:"s", delivery_terms:"s",
-      payment_terms:"s", delivery_addr:"s", tender_url:"s", status:"s", notes:"s" } },
+      payment_terms:"s", delivery_addr:"s", tender_url:"s", status:"s", stage:"s", notes:"s" } },
   tasks: { table: "custom_tasks", cols: { title:"s", due_date:"s", responsible_id:"u", done:"b" } },
   samples: { table: "samples", cols: { description:"s", qty:"s", specs:"s", due_date:"s", sent_date:"s", ttn:"s",
       sender_id:"u", controller_id:"u", received:"b", quality_ok:"b", remarks:"s", resend:"b" } },

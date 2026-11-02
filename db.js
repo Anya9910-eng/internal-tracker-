@@ -57,6 +57,7 @@ db.exec(`
     delivery_addr   TEXT DEFAULT '',
     tender_url      TEXT DEFAULT '',
     status          TEXT DEFAULT 'active',   -- active | closed
+    stage           TEXT DEFAULT 'new',      -- стадія воронки супроводу
     notes           TEXT DEFAULT '',
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL
@@ -198,6 +199,7 @@ db.exec(`
 const cCols = db.prepare("PRAGMA table_info(contracts)").all().map(c => c.name);
 if (!cCols.includes("plan_qty")) db.exec("ALTER TABLE contracts ADD COLUMN plan_qty REAL DEFAULT 0");
 if (!cCols.includes("unit")) db.exec("ALTER TABLE contracts ADD COLUMN unit TEXT DEFAULT ''");
+if (!cCols.includes("stage")) db.exec("ALTER TABLE contracts ADD COLUMN stage TEXT DEFAULT 'new'");
 const aCols = db.prepare("PRAGMA table_info(attachments)").all().map(c => c.name);
 if (!aCols.includes("ref_id")) db.exec("ALTER TABLE attachments ADD COLUMN ref_id TEXT DEFAULT ''");
 

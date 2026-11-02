@@ -138,6 +138,16 @@
   .badge.amber{color:var(--warn);border-color:#4a3c1c;background:var(--warn-soft)}
 
   /* ---- contracts list ---- */
+  .viewseg{flex:none}
+  .pipe{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px;align-items:flex-start}
+  .pipe::-webkit-scrollbar{height:9px}.pipe::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px}
+  .pcol{flex:0 0 312px;min-width:312px;display:flex;flex-direction:column;gap:11px}
+  .phead{color:#fff;font-weight:800;font-size:13px;padding:10px 24px 10px 15px;border-radius:9px;
+         clip-path:polygon(0 0,calc(100% - 15px) 0,100% 50%,calc(100% - 15px) 100%,0 100%);box-shadow:0 10px 20px -14px rgba(0,0,0,.6)}
+  .psum{font-weight:800;font-size:18px;padding:0 4px}
+  .pcards{display:flex;flex-direction:column;gap:11px;min-height:46px;border-radius:14px;padding:3px;transition:background .12s}
+  .pcards.drop{background:var(--accent-soft);outline:2px dashed var(--accent);outline-offset:-2px}
+  .pcol .ccard{cursor:grab}
   .clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
   .ccard{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:18px;
          padding:17px 18px;cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
@@ -288,10 +298,35 @@
     return data;
   }
 
-  const state={ me:null, users:[], adminId:null, view:"dashboard", detailId:null, detailTab:"main", logo:null, dashResp:"", dashOverdue:false };
+  const state={ me:null, users:[], adminId:null, view:"dashboard", detailId:null, detailTab:"main", logo:null, dashResp:"", dashOverdue:false, contractsView:"pipe" };
   const daysLate=due=>{ if(!due) return 0; return Math.max(0,Math.floor((Date.now()-new Date(due+"T00:00:00"))/86400000)); };
   const AV_PAL=["#e8842e","#2bb6a6","#5c7cff","#e05d8f","#45c586","#b57cf0","#eab54a","#ef6b5b","#3bb0c4"];
   const avColor=n=>AV_PAL[([...String(n||"?")].reduce((a,c)=>a+c.charCodeAt(0),0))%AV_PAL.length];
+  const STAGES=[
+    {k:"new",name:"Новий",color:"#3aa655"},{k:"samples",name:"Зразки",color:"#e0902a"},
+    {k:"production",name:"Виробництво",color:"#e0574e"},{k:"shipping",name:"Відвантаження",color:"#20a79a"},
+    {k:"docs",name:"Документи",color:"#8a6fe0"},{k:"payment",name:"Оплата",color:"#3b82f6"},
+    {k:"done",name:"Завершено",color:"#7a8699"}
+  ];
+  const stageOf=c=>{ const k=c.stage||"new"; return STAGES.some(s=>s.k===k)?k:"new"; };
+  function contractCard(c,drag){
+    const prog=c.totalSum>0?Math.min(100,Math.round((c.paid/c.totalSum)*100)):0;
+    const nos=[c.tenderNo?"№ "+esc(c.tenderNo):"",c.contractNo?"Договір "+esc(c.contractNo):""].filter(Boolean).join(" · ")||"&nbsp;";
+    return `<div class="ccard"${drag?' draggable="true"':''} data-id="${c.id}" data-open="${c.id}">
+      <div class="cc-top">
+        <span class="cc-av" style="background:${avColor(c.buyer)}">${esc(initials(c.buyer||"?"))}</span>
+        <span class="cc-id"><span class="cc-buyer">${esc(c.buyer)||"Без назви"}</span><span class="cc-nos">${nos}</span></span>
+        <span class="cc-chip ${c.status==="closed"?"cl":"ac"}">${c.status==="closed"?"Завершено":"В роботі"}</span>
+      </div>
+      <div class="cc-bar"><i style="width:${prog}%"></i></div>
+      <div class="cc-meta"><span>Оплачено ${prog}%</span>${c.debt>0?`<span class="cc-debt">борг ${money(c.debt)}</span>`:`<span class="cc-ok">оплачено повністю</span>`}</div>
+      <div class="cc-foot">
+        <span class="cc-mgr">${c.managerName?`<span class="cc-dot"></span><span class="n">${esc(c.managerName)}</span>`:"<span class='mut2'>без менеджера</span>"}</span>
+        <span class="cc-sum">${money(c.totalSum)}</span>
+      </div>
+      ${c.openTasks?`<span class="cc-tasks">● ${c.openTasks} відкритих задач</span>`:`<span class="cc-tasks ok">✓ усі задачі закрито</span>`}
+    </div>`;
+  }
 
   /* ---------- clock ---------- */
   function tickClock(){
@@ -431,38 +466,50 @@
   }
 
   /* ---------- contracts list ---------- */
-  function renderContracts(d){
-    refreshTop(d.me); state.users=d.users; state.adminId=d.adminId;
-    const cards=d.contracts.map(c=>{
-      const prog=c.totalSum>0?Math.min(100,Math.round((c.paid/c.totalSum)*100)):0;
-      const nos=[c.tenderNo?"№ "+esc(c.tenderNo):"",c.contractNo?"Договір "+esc(c.contractNo):""].filter(Boolean).join(" · ")||"&nbsp;";
-      return `<div class="ccard" data-open="${c.id}">
-        <div class="cc-top">
-          <span class="cc-av" style="background:${avColor(c.buyer)}">${esc(initials(c.buyer||"?"))}</span>
-          <span class="cc-id"><span class="cc-buyer">${esc(c.buyer)||"Без назви"}</span><span class="cc-nos">${nos}</span></span>
-          <span class="cc-chip ${c.status==="closed"?"cl":"ac"}">${c.status==="closed"?"Завершено":"В роботі"}</span>
-        </div>
-        <div class="cc-bar"><i style="width:${prog}%"></i></div>
-        <div class="cc-meta"><span>Оплачено ${prog}%</span>${c.debt>0?`<span class="cc-debt">борг ${money(c.debt)}</span>`:`<span class="cc-ok">оплачено повністю</span>`}</div>
-        <div class="cc-foot">
-          <span class="cc-mgr">${c.managerName?`<span class="cc-dot"></span><span class="n">${esc(c.managerName)}</span>`:"<span class='mut2'>без менеджера</span>"}</span>
-          <span class="cc-sum">${money(c.totalSum)}</span>
-        </div>
-        ${c.openTasks?`<span class="cc-tasks">● ${c.openTasks} відкритих задач</span>`:`<span class="cc-tasks ok">✓ усі задачі закрито</span>`}
-      </div>`;
-    }).join("");
+  let cData=null, cFilter="", dragCid=null;
+  function renderContracts(d){ refreshTop(d.me); state.users=d.users; state.adminId=d.adminId; cData=d; paintContracts(); }
+  function paintContracts(){
+    const d=cData, q=cFilter.toLowerCase();
+    const list=d.contracts.filter(c=>!q||((c.buyer||"")+" "+(c.tenderNo||"")+" "+(c.contractNo||"")).toLowerCase().includes(q));
+    const view=state.contractsView;
+    let body;
+    if(view==="list"){
+      body=`<div class="clist">${list.map(c=>contractCard(c,false)).join("")||`<div class="empty">Нічого не знайдено</div>`}</div>`;
+    } else {
+      body=`<div class="pipe">`+STAGES.map(s=>{
+        const items=list.filter(c=>stageOf(c)===s.k);
+        const sum=items.reduce((a,c)=>a+(c.totalSum||0),0);
+        return `<div class="pcol"><div class="phead" style="background:${s.color}">${s.name} · ${items.length}</div>
+          <div class="psum">${money(sum)}</div>
+          <div class="pcards" data-stagecards="${s.k}">${items.map(c=>contractCard(c,true)).join("")}</div></div>`;
+      }).join("")+`</div>`;
+    }
     $("#view").innerHTML=`
       <div class="page-head"><h2>Договори</h2>
-        <div class="search"><span>🔎</span><input id="search" placeholder="Пошук: покупець / № тендера / договору"></div>
-        <div class="spacer"></div><button class="btn" id="addContract">+ Новий договір</button></div>
-      <div class="clist" id="clist">${cards||`<div class="empty">Ще немає договорів. Додайте перший.</div>`}</div>`;
+        <div class="search"><span>🔎</span><input id="search" placeholder="Пошук: покупець / № тендера" value="${esc(cFilter)}"></div>
+        <div class="spacer"></div>
+        <div class="seg viewseg"><button data-cv="pipe" class="${view==="pipe"?"on":""}">Воронка</button><button data-cv="list" class="${view==="list"?"on":""}">Список</button></div>
+        <button class="btn" id="addContract">+ Новий договір</button></div>
+      ${body}`;
     $("#view").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>go("detail",el.dataset.open));
     $("#addContract").onclick=async()=>{ try{ const r=await api("POST","/api/contracts",{}); go("detail",r.id); }catch(err){ toast("⚠️ "+err.message); } };
-    $("#search").addEventListener("input",e=>{
-      const q=e.target.value.trim().toLowerCase();
-      d.contracts.forEach((c,i)=>{ const card=$("#clist").children[i]; if(!card) return;
-        const hay=((c.buyer||"")+" "+(c.tenderNo||"")+" "+(c.contractNo||"")).toLowerCase();
-        card.style.display=hay.includes(q)?"":"none"; });
+    $("#view").querySelectorAll("[data-cv]").forEach(b=>b.onclick=()=>{ state.contractsView=b.dataset.cv; paintContracts(); });
+    const srch=$("#search"); if(srch) srch.oninput=()=>{ cFilter=srch.value.trim(); paintContracts();
+      const s=$("#search"); if(s){ s.focus(); s.setSelectionRange(s.value.length,s.value.length); } };
+    if(view==="pipe") wirePipe();
+  }
+  function wirePipe(){
+    $("#view").querySelectorAll('.ccard[draggable]').forEach(el=>{
+      el.addEventListener("dragstart",e=>{ dragCid=el.dataset.id; el.style.opacity=".5"; e.dataTransfer.effectAllowed="move"; });
+      el.addEventListener("dragend",()=>{ dragCid=null; el.style.opacity=""; });
+    });
+    $("#view").querySelectorAll("[data-stagecards]").forEach(zone=>{
+      zone.addEventListener("dragover",e=>{ if(dragCid){ e.preventDefault(); zone.classList.add("drop"); } });
+      zone.addEventListener("dragleave",e=>{ if(!zone.contains(e.relatedTarget)) zone.classList.remove("drop"); });
+      zone.addEventListener("drop",async e=>{ if(!dragCid) return; e.preventDefault(); zone.classList.remove("drop");
+        const stage=zone.dataset.stagecards, id=dragCid; dragCid=null;
+        try{ await api("PATCH","/api/contracts/"+id,{stage}); cData=await api("GET","/api/contracts"); paintContracts(); }
+        catch(err){ toast("⚠️ "+err.message); } });
     });
   }
 
