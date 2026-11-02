@@ -95,7 +95,13 @@
   .counter.blue{border-top-color:var(--accent-2)} .counter.blue .n{color:var(--accent-2)}
   .counter.green{border-color:#1c3b2b;border-top-color:var(--good)} .counter.green .n{color:var(--good)}
 
+  .escal{background:var(--bad-soft);border:1px solid #5a2a26;color:#ffb3a7;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13.5px}
+  .filterbar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .cust-head{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .cust-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .cust-row:last-child{border-bottom:none} .cust-row:hover{color:var(--accent-2)}
   .tasklist{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .task.od{box-shadow:inset 3px 0 0 var(--bad)}
   .tasklist .th{padding:13px 18px;border-bottom:1px solid var(--line);font-weight:800;font-size:13px}
   .task{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);cursor:pointer}
   .task:last-child{border-bottom:none} .task:hover{background:var(--panel-2)}
@@ -220,6 +226,7 @@
     <div class="nav" id="nav">
       <button data-view="dashboard" class="on">Панель</button>
       <button data-view="contracts">Договори</button>
+      <button data-view="customers">Замовники</button>
     </div>
     <div class="spacer"></div>
     <div class="clock"><div class="t" id="clockT">--:--:--</div><div class="d" id="clockD">—</div></div>
@@ -252,7 +259,8 @@
     return data;
   }
 
-  const state={ me:null, users:[], adminId:null, view:"dashboard", detailId:null, detailTab:"main", logo:null };
+  const state={ me:null, users:[], adminId:null, view:"dashboard", detailId:null, detailTab:"main", logo:null, dashResp:"", dashOverdue:false };
+  const daysLate=due=>{ if(!due) return 0; return Math.max(0,Math.floor((Date.now()-new Date(due+"T00:00:00"))/86400000)); };
 
   /* ---------- clock ---------- */
   function tickClock(){
@@ -314,6 +322,7 @@
     try{
       if(state.view==="dashboard") return renderDashboard(await api("GET","/api/dashboard"));
       if(state.view==="contracts") return renderContracts(await api("GET","/api/contracts"));
+      if(state.view==="customers") return renderCustomers(await api("GET","/api/contracts"));
       if(state.view==="detail") return renderDetail(await api("GET","/api/contracts/"+state.detailId));
     }catch(err){ if(err.status===401) return showAuth(); el.innerHTML=`<div class="empty">⚠️ ${esc(err.message)}</div>`; }
   }
@@ -321,29 +330,66 @@
 
   /* ---------- dashboard ---------- */
   const KIND_IC={sample:"🧪",production:"🏭",shipment:"🚚",document:"📄",payment:"₴",task:"📌"};
-  function renderDashboard(d){
-    refreshTop(d.me);
-    const c=d.counters;
-    const tasks=d.tasks.map(t=>{
-      const due=t.due?dateUA(t.due):"—";
-      const badge=t.overdue?`<span class="badge red">прострочено</span>`:(t.soon?`<span class="badge amber">${due}</span>`:`<span class="badge">${due}</span>`);
-      return `<div class="task" data-open="${t.contractId}">
+  let dashData=null;
+  function renderDashboard(d){ refreshTop(d.me); dashData=d; paintDashboard(); }
+  function paintDashboard(){
+    const d=dashData, c=d.counters;
+    const resps=[...new Map(d.tasks.filter(t=>t.responsibleId).map(t=>[t.responsibleId,t.responsibleName])).entries()];
+    const tasks=d.tasks.filter(t=>(!state.dashResp||t.responsibleId===state.dashResp)&&(!state.dashOverdue||t.overdue));
+    const rows=tasks.map(t=>{
+      const badge=t.overdue?`<span class="badge red">прострочено ${daysLate(t.due)} дн.</span>`
+        :(t.soon?`<span class="badge amber">${dateUA(t.due)}</span>`:`<span class="badge">${t.due?dateUA(t.due):"—"}</span>`);
+      return `<div class="task ${t.overdue?"od":""}" data-open="${t.contractId}">
         <div class="ic k-${t.kind}">${KIND_IC[t.kind]||"•"}</div>
         <div class="main"><div class="t">${esc(t.title)}</div>
           <div class="s">${esc(t.buyer)}${t.contractNo?" · Договір "+esc(t.contractNo):""}${t.responsibleName?" · "+esc(t.responsibleName):""}</div></div>
         <div class="due">${badge}</div></div>`;
     }).join("");
+    const banner=c.overdue>0?`<div class="escal">🔴 <b>${c.overdue}</b> ${c.overdue===1?"задача прострочена":"задач прострочено"} — потребують ескалації керівнику</div>`:"";
     $("#view").innerHTML=`
       <div class="page-head"><h2>Панель контролю</h2><div class="spacer"></div>
         <div class="mut2" style="font-size:13px">Станом на сьогодні</div></div>
+      ${banner}
       <div class="counters">
         <div class="counter red"><div class="n">${c.overdue}</div><div class="l">Прострочені задачі</div></div>
         <div class="counter amber"><div class="n">${c.week}</div><div class="l">Строки на цьому тижні</div></div>
         <div class="counter blue"><div class="n">${c.awaitingShipment}</div><div class="l">Очікують відвантаження</div></div>
         <div class="counter green"><div class="n">${c.awaitingPayment}</div><div class="l">Очікують оплати</div></div>
       </div>
-      <div class="tasklist"><div class="th">Задачі, що потребують уваги (${d.tasks.length})</div>
-        ${tasks||`<div class="empty">Немає відкритих задач 🎉</div>`}</div>`;
+      <div class="filterbar">
+        <select class="in" id="fResp" style="width:auto;min-width:180px"><option value="">Усі відповідальні</option>${resps.map(([id,nm])=>`<option value="${id}" ${state.dashResp===id?"selected":""}>${esc(nm)}</option>`).join("")}</select>
+        <div class="toggle ${state.dashOverdue?"on":""}" id="fOverdue"><span class="sw"></span><span>Тільки прострочені</span></div>
+        ${(state.dashResp||state.dashOverdue)?`<button class="btn ghost sm" id="fClear">Скинути</button>`:""}
+      </div>
+      <div class="tasklist"><div class="th">Задачі, що потребують уваги (${tasks.length})</div>
+        ${rows||`<div class="empty">Немає задач за фільтром 🎉</div>`}</div>`;
+    $("#view").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>go("detail",el.dataset.open));
+    const fr=$("#fResp"); if(fr) fr.onchange=()=>{ state.dashResp=fr.value; paintDashboard(); };
+    const fo=$("#fOverdue"); if(fo) fo.onclick=()=>{ state.dashOverdue=!state.dashOverdue; paintDashboard(); };
+    const fc=$("#fClear"); if(fc) fc.onclick=()=>{ state.dashResp=""; state.dashOverdue=false; paintDashboard(); };
+  }
+  function renderCustomers(d){
+    refreshTop(d.me); state.users=d.users; state.adminId=d.adminId;
+    const groups=new Map();
+    d.contracts.forEach(c=>{ const k=(c.buyer||"Без назви").trim()||"Без назви"; if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(c); });
+    const blocks=[...groups.entries()].map(([buyer,list])=>{
+      const sum=list.reduce((a,c)=>a+(c.totalSum||0),0), debt=list.reduce((a,c)=>a+(c.debt||0),0), tk=list.reduce((a,c)=>a+(c.openTasks||0),0);
+      const rows=list.map(c=>`<div class="cust-row" data-open="${c.id}">
+        <span style="flex:1;min-width:0"><b>${c.contractNo?"Договір "+esc(c.contractNo):"Без номера"}</b> <span class="mut2">${c.tenderNo?"· "+esc(c.tenderNo):""}</span></span>
+        <span class="badge ${c.debt>0?"amber":""}">${c.debt>0?"борг "+money(c.debt):"оплачено"}</span>
+        <span class="badge">${c.openTasks?c.openTasks+" задач":"закрито"}</span>
+        <b style="white-space:nowrap">${money(c.totalSum)}</b></div>`).join("");
+      return `<div class="panel" style="margin-bottom:14px">
+        <div class="cust-head"><div><div style="font-size:16px;font-weight:800">${esc(buyer)}</div>
+          <div class="mut2" style="font-size:12.5px">Договорів: ${list.length}</div></div>
+          <div class="stats"><div class="stat s-sum"><div class="l">Сума</div><div class="v">${money(sum)}</div></div>
+            <div class="stat s-debt"><div class="l">Борг</div><div class="v ${debt>0?"debt":""}">${money(debt)}</div></div>
+            <div class="stat"><div class="l">Задач</div><div class="v">${tk}</div></div></div></div>
+        <div>${rows}</div></div>`;
+    }).join("");
+    $("#view").innerHTML=`<div class="page-head"><h2>Замовники</h2><div class="spacer"></div>
+      <div class="mut2" style="font-size:13px">Усі зобовʼязання за кожним замовником</div></div>
+      ${blocks||`<div class="empty">Ще немає договорів</div>`}`;
     $("#view").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>go("detail",el.dataset.open));
   }
 
