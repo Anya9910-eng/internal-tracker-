@@ -50,6 +50,8 @@ db.exec(`
     total_sum       REAL DEFAULT 0,
     valid_until     TEXT DEFAULT '',
     total_volume    TEXT DEFAULT '',
+    plan_qty        REAL DEFAULT 0,
+    unit            TEXT DEFAULT '',
     delivery_terms  TEXT DEFAULT '',
     payment_terms   TEXT DEFAULT '',
     delivery_addr   TEXT DEFAULT '',
@@ -150,6 +152,7 @@ db.exec(`
     id          TEXT PRIMARY KEY,
     contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
     scope       TEXT DEFAULT 'contract',
+    ref_id      TEXT DEFAULT '',     -- id конкретного запису (відвантаження/документа…) або ''
     name        TEXT DEFAULT '',
     mime        TEXT DEFAULT '',
     size        INTEGER DEFAULT 0,
@@ -157,7 +160,46 @@ db.exec(`
     uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at  TEXT NOT NULL
   );
+
+  /* Довільні задачі (окремо від стандартних блоків) */
+  CREATE TABLE IF NOT EXISTS custom_tasks (
+    id             TEXT PRIMARY KEY,
+    contract_id    TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    title          TEXT DEFAULT '',
+    due_date       TEXT DEFAULT '',
+    responsible_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    done           INTEGER DEFAULT 0,
+    created_at     TEXT NOT NULL
+  );
+
+  /* Коментарі співробітників */
+  CREATE TABLE IF NOT EXISTS comments (
+    id          TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    user_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    text        TEXT DEFAULT '',
+    created_at  TEXT NOT NULL
+  );
+
+  /* Історія зміни термінів */
+  CREATE TABLE IF NOT EXISTS date_history (
+    id          TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    scope       TEXT DEFAULT '',
+    field       TEXT DEFAULT '',
+    old_val     TEXT DEFAULT '',
+    new_val     TEXT DEFAULT '',
+    user_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL
+  );
 `);
+
+/* ---------- легкі міграції (безпечно щозапуску) ---------- */
+const cCols = db.prepare("PRAGMA table_info(contracts)").all().map(c => c.name);
+if (!cCols.includes("plan_qty")) db.exec("ALTER TABLE contracts ADD COLUMN plan_qty REAL DEFAULT 0");
+if (!cCols.includes("unit")) db.exec("ALTER TABLE contracts ADD COLUMN unit TEXT DEFAULT ''");
+const aCols = db.prepare("PRAGMA table_info(attachments)").all().map(c => c.name);
+if (!aCols.includes("ref_id")) db.exec("ALTER TABLE attachments ADD COLUMN ref_id TEXT DEFAULT ''");
 
 /* ---------- перший запуск: приклад договору ---------- */
 function seedIfEmpty() {
@@ -167,13 +209,13 @@ function seedIfEmpty() {
   const T = todayKey();
   const cid = uid();
   db.prepare(`INSERT INTO contracts
-    (id,tender_no,contract_no,buyer,edrpou,contact_person,phone,email,win_date,sign_date,total_sum,valid_until,total_volume,delivery_terms,payment_terms,delivery_addr,tender_url,status,notes,created_at,updated_at)
-    VALUES (@id,@tender_no,@contract_no,@buyer,@edrpou,@contact_person,@phone,@email,@win_date,@sign_date,@total_sum,@valid_until,@total_volume,@delivery_terms,@payment_terms,@delivery_addr,@tender_url,'active','',@now,@now)`)
+    (id,tender_no,contract_no,buyer,edrpou,contact_person,phone,email,win_date,sign_date,total_sum,valid_until,total_volume,plan_qty,unit,delivery_terms,payment_terms,delivery_addr,tender_url,status,notes,created_at,updated_at)
+    VALUES (@id,@tender_no,@contract_no,@buyer,@edrpou,@contact_person,@phone,@email,@win_date,@sign_date,@total_sum,@valid_until,@total_volume,@plan_qty,@unit,@delivery_terms,@payment_terms,@delivery_addr,@tender_url,'active','',@now,@now)`)
     .run({
       id: cid, tender_no: "UA-2026-001234", contract_no: "Д-57", buyer: "КП «Міська лікарня №4»",
       edrpou: "01234567", contact_person: "Петренко О.І.", phone: "+380 67 123 45 67", email: "zakupivli@lik4.ua",
       win_date: addDays(T, -10), sign_date: addDays(T, -5), total_sum: 480000, valid_until: addDays(T, 60),
-      total_volume: "20 000 пар", delivery_terms: "партіями, до 30 днів", payment_terms: "відстрочка 14 днів",
+      total_volume: "20 000 пар", plan_qty: 20000, unit: "пар", delivery_terms: "партіями, до 30 днів", payment_terms: "відстрочка 14 днів",
       delivery_addr: "м. Київ, вул. Лікарняна, 4, склад", tender_url: "https://prozorro.gov.ua/tender/...", now
     });
   db.prepare(`INSERT INTO samples (id,contract_id,description,qty,specs,due_date,created_at)

@@ -105,6 +105,14 @@
   .task .ic.k-shipment{color:#60a5fa;background:#0f1d3a;border-color:#23406e}
   .task .ic.k-document{color:#f0c56a;background:#271f0d;border-color:#4a3c1c}
   .task .ic.k-payment{color:#5fd39b;background:#0e2619;border-color:#1c4631}
+  .task .ic.k-task{color:#f472b6;background:#2a1526;border-color:#4a2238}
+  .rec-files{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+  .rec-files .rf{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px;color:var(--fg)}
+  .rec-files .rf-x{border:none;background:none;color:var(--muted-2);font-size:12px;padding:0 2px}
+  .rec-files .rf-x:hover{color:var(--bad)}
+  .rec-files .rf-add{display:inline-flex;align-items:center;gap:5px;cursor:pointer;color:var(--accent-2);font-weight:700;font-size:12.5px;border:1px dashed var(--line-2);border-radius:999px;padding:4px 11px}
+  .cmt .meta{display:flex;gap:8px;align-items:center;margin-bottom:5px}
+  .cmt .meta .who{font-weight:700;font-size:13px} .cmt .meta .when{color:var(--muted-2);font-size:11.5px}
   .task .main{flex:1;min-width:0}
   .task .main .t{font-weight:600}
   .task .main .s{color:var(--muted-2);font-size:12px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -234,6 +242,8 @@
   const dateUA=iso=>{ if(!iso) return "—"; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return esc(iso);
     return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"short",year:"numeric"}); };
   const sizeKB=b=>b>=1048576?(b/1048576).toFixed(1)+" МБ":Math.max(1,Math.round(b/1024))+" КБ";
+  const fmtDT=iso=>{ const d=new Date(iso); return isNaN(d)?"":d.toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); };
+  const fmtQty=(n,u)=>(parseFloat(n)||0).toLocaleString("uk-UA")+(u?" "+u:"");
 
   async function api(method,url,body){
     const r=await fetch(url,{method,headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
@@ -310,7 +320,7 @@
   function refreshTop(me){ if(me) state.me=me; const p=state.me; if(!p) return; $("#profName").textContent=p.name; $("#profAv").textContent=initials(p.name); }
 
   /* ---------- dashboard ---------- */
-  const KIND_IC={sample:"🧪",production:"🏭",shipment:"🚚",document:"📄",payment:"₴"};
+  const KIND_IC={sample:"🧪",production:"🏭",shipment:"🚚",document:"📄",payment:"₴",task:"📌"};
   function renderDashboard(d){
     refreshTop(d.me);
     const c=d.counters;
@@ -375,7 +385,7 @@
       ["contact_person","Контактна особа","text"],["phone","Телефон","text"],["email","Пошта","text"],
       ["win_date","Дата перемоги","date"],["sign_date","Дата підписання договору","date"],
       ["total_sum","Загальна сума договору, грн","number"],["valid_until","Строк дії договору","date"],
-      ["total_volume","Загальний обсяг продукції","text"],["delivery_terms","Умови поставки","text"],
+      ["total_volume","Загальний обсяг продукції","text"],["plan_qty","Плановий обсяг (к-сть)","number"],["unit","Одиниця (кг/шт/пар)","text"],["delivery_terms","Умови поставки","text"],
       ["payment_terms","Умови оплати","text"],["delivery_addr","Адреса поставки","text",2],
       ["tender_url","Посилання на тендер","text",2],["notes","Нотатки","textarea",2]
     ],
@@ -411,6 +421,10 @@
       ["kind","Тип","sselect:prepay=Передоплата,payment=Оплата"],["amount","Сума, грн","number"],
       ["invoice_date","Дата виставлення рахунку","date"],["planned_date","Планова дата надходження","date"],["actual_date","Фактична дата надходження","date"],
       ["responsible_id","Відповідальний за оплату","user"]
+    ],
+    tasks:[
+      ["title","Опис задачі","text",2],["due_date","Строк виконання","date"],
+      ["responsible_id","Відповідальний","user"],["done","Виконано","bool"]
     ]
   };
   function field(child,id,spec,rec){
@@ -440,24 +454,32 @@
     if(child==="documents") return rec.kind||"Документ";
     if(child==="production") return rec.product||"Продукція";
     if(child==="samples") return rec.description||"Зразок";
+    if(child==="tasks") return rec.title||"Задача";
     return "Запис";
   }
-  function recordBlock(child,list){
-    const items=list.map((rec,i)=>`<div class="rec">
-      <div class="rec-head"><span class="t">${esc(recTitle(child,rec,i))}</span>
-        <button class="btn danger sm" data-del="${child}" data-delid="${rec.id}">Видалити</button></div>
-      <div class="grid">${F[child].map(sp=>field(child,rec.id,sp,rec)).join("")}</div></div>`).join("");
+  function recordBlock(child,list,atts){
+    const items=list.map((rec,i)=>{
+      const rf=(atts||[]).filter(a=>a.refId===rec.id);
+      const files=`<div class="rec-files">`
+        +rf.map(a=>`<span class="rf"><a href="/api/files/${a.id}" target="_blank" style="color:inherit;text-decoration:none">📎 ${esc(a.name)}</a><button class="rf-x" data-delfile="${a.id}" title="Видалити">✕</button></span>`).join("")
+        +`<label class="rf-add">+ файл<input type="file" multiple hidden data-upfile="${rec.id}"></label></div>`;
+      return `<div class="rec">
+        <div class="rec-head"><span class="t">${esc(recTitle(child,rec,i))}</span>
+          <button class="btn danger sm" data-del="${child}" data-delid="${rec.id}">Видалити</button></div>
+        <div class="grid">${F[child].map(sp=>field(child,rec.id,sp,rec)).join("")}</div>${files}</div>`;
+    }).join("");
     return (items||`<div class="empty" style="padding:16px">Поки порожньо</div>`)
       +`<button class="addbtn" data-add="${child}">+ Додати запис</button>`;
   }
+  function fieldLabel(scope,f){ const sp=(F[scope]||[]).find(s=>s[0]===f); return sp?sp[1]:f; }
 
   /* ---------- detail ---------- */
   function renderDetail(d){
     refreshTop(d.me); state.users=d.users;
     const c=d.contract, cm=d.computed;
     const tab=state.detailTab;
-    const counts={main:0,samples:d.samples.length,production:d.production.length,shipments:d.shipments.length,documents:d.documents.length,payments:d.payments.length,files:d.attachments.length};
-    const tabDef=[["main","Основне"],["samples","Образці"],["production","Виробництво"],["shipments","Відвантаження"],["documents","Документи"],["payments","Оплати"],["files","Файли"]];
+    const counts={main:0,tasks:d.tasks.length,samples:d.samples.length,production:d.production.length,shipments:d.shipments.length,documents:d.documents.length,payments:d.payments.length,files:d.attachments.length,comments:d.comments.length,history:d.history.length};
+    const tabDef=[["main","Основне"],["tasks","Задачі"],["samples","Образці"],["production","Виробництво"],["shipments","Відвантаження"],["documents","Документи"],["payments","Оплати"],["files","Файли"],["comments","Коментарі"],["history","Історія"]];
     const tabs=tabDef.map(([k,l])=>`<button data-tab="${k}" class="${k===tab?"on":""}">${l}${counts[k]?`<span class="c">${counts[k]}</span>`:""}</button>`).join("");
     let body="";
     if(tab==="main"){
@@ -477,12 +499,21 @@
         <div class="files" style="margin-bottom:14px">${files||`<div class="empty" style="padding:16px">Файлів ще немає</div>`}</div>
         <button class="addbtn" id="fileAdd">+ Завантажити файл</button>
         <input type="file" id="fileInput" multiple hidden></div>`;
+    } else if(tab==="comments"){
+      body=`<div class="panel">
+        <div class="field"><textarea class="in" id="cmText" placeholder="Напишіть коментар для команди…"></textarea></div>
+        <div><button class="btn sm" id="cmAdd">Додати коментар</button></div>
+        <div style="margin-top:14px">${d.comments.map(x=>`<div class="rec cmt"><div class="meta"><span class="who">${esc(x.userName||"—")}</span><span class="when">${fmtDT(x.createdAt)}</span>${(x.userId===state.me.id||state.me.id===state.adminId)?`<span style="flex:1"></span><button class="btn danger sm" data-delcomment="${x.id}">✕</button>`:""}</div><div>${esc(x.text)}</div></div>`).join("")||`<div class="empty">Коментарів ще немає</div>`}</div></div>`;
+    } else if(tab==="history"){
+      body=`<div class="panel"><div class="sec-note">Усі зміни планових дат — хто і коли переносив строки.</div>
+        ${d.history.map(h=>`<div class="rec" style="padding:12px 15px"><div style="display:flex;gap:10px;align-items:flex-start"><span>📅</span><div style="flex:1"><div><b>${esc(fieldLabel(h.scope,h.field))}</b>: <span class="mut2">${h.oldVal?dateUA(h.oldVal):"—"}</span> → <b>${h.newVal?dateUA(h.newVal):"—"}</b></div><div class="mut2" style="font-size:12px">${esc(h.userName||"")} · ${fmtDT(h.createdAt)}</div></div></div></div>`).join("")||`<div class="empty">Змін термінів ще не було</div>`}</div>`;
     } else {
-      const notes={samples:"Окремий блок — тут легко пропустити строки. Нагадування з’явиться на панелі, якщо зразок не відправлено вчасно.",
+      const notes={tasks:"Довільні доручення, яких немає серед стандартних блоків. Невиконані зʼявляються на панелі керівника.",
+        samples:"Окремий блок — тут легко пропустити строки. Нагадування зʼявиться на панелі, якщо зразок не відправлено вчасно.",
         shipments:"Журнал відвантажень — один договір може мати кілька поставок.",
         documents:"Контроль по кожному документу: статус, дати та відповідальний.",
         payments:"Якщо договір оплачується частинами — додайте окремий запис на кожну оплату."}[tab];
-      body=`<div class="panel">${notes?`<div class="sec-note">${notes}</div>`:""}${recordBlock(tab,d[tab])}</div>`;
+      body=`<div class="panel">${notes?`<div class="sec-note">${notes}</div>`:""}${recordBlock(tab,d[tab],d.attachments)}</div>`;
     }
     $("#view").innerHTML=`
       <div class="detail-head">
@@ -495,6 +526,8 @@
           <div class="stat s-sum"><div class="l">Сума договору</div><div class="v">${money(c.totalSum)}</div></div>
           <div class="stat s-paid"><div class="l">Оплачено</div><div class="v paid">${money(cm.paid)}</div></div>
           <div class="stat s-debt"><div class="l">Залишок боргу</div><div class="v ${cm.debt>0?"debt":""}">${money(cm.debt)}</div></div>
+          ${cm.planQty>0?`<div class="stat"><div class="l">Залишок до поставки</div><div class="v">${fmtQty(cm.remainingQty,cm.unit)}</div></div>`:""}
+          ${cm.overdueDebt>0?`<div class="stat s-debt"><div class="l">Прострочено оплат</div><div class="v debt">${money(cm.overdueDebt)}</div></div>`:""}
         </div>
       </div>
       <div class="tabs" id="tabs">${tabs}</div>
@@ -505,14 +538,16 @@
       $("#fileAdd").onclick=()=>$("#fileInput").click();
       $("#fileInput").onchange=e=>uploadFiles(c.id, e.target.files);
     }
+    if(tab==="comments"){ const add=$("#cmAdd"); if(add) add.onclick=async()=>{ const t=$("#cmText").value.trim(); if(!t) return;
+      try{ await api("POST","/api/contracts/"+c.id+"/comments",{text:t}); render(); }catch(err){ toast("⚠️ "+err.message); } }; }
   }
 
-  async function uploadFiles(cid, files){
+  async function uploadFiles(cid, files, refId){
     for(const f of files){
       if(f.size>25*1024*1024){ toast("⚠️ «"+f.name+"» завеликий (макс. 25 МБ)"); continue; }
       try{
         const dataBase64=await new Promise((res,rej)=>{ const rd=new FileReader(); rd.onload=()=>res(rd.result); rd.onerror=rej; rd.readAsDataURL(f); });
-        await api("POST","/api/contracts/"+cid+"/files",{name:f.name,mime:f.type,dataBase64});
+        await api("POST","/api/contracts/"+cid+"/files",{name:f.name,mime:f.type,refId:refId||"",dataBase64});
       }catch(err){ toast("⚠️ "+err.message); }
     }
     toast("Файли завантажено ✓"); render();
@@ -532,13 +567,14 @@
   function scheduleSave(el){ clearTimeout(saveTimers.get(el)); saveTimers.set(el,setTimeout(()=>saveField(el),600)); }
   const viewEl=$("#view");
   viewEl.addEventListener("input",e=>{ const el=e.target.closest("[data-f]"); if(el&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA")&&el.type!=="date") scheduleSave(el); });
-  viewEl.addEventListener("change",e=>{ const el=e.target.closest("[data-f]"); if(el) saveField(el); });
+  viewEl.addEventListener("change",e=>{ const up=e.target.closest("[data-upfile]"); if(up){ uploadFiles(state.detailId, up.files, up.dataset.upfile); return; } const el=e.target.closest("[data-f]"); if(el) saveField(el); });
   viewEl.addEventListener("click",async e=>{
     const tg=e.target.closest(".toggle[data-type=bool]"); if(tg){ tg.classList.toggle("on"); saveField(tg); return; }
     let m;
     if((m=e.target.closest("[data-add]"))){ try{ await api("POST","/api/contracts/"+state.detailId+"/"+m.dataset.add,{}); render(); }catch(err){ toast("⚠️ "+err.message); } }
     else if((m=e.target.closest("[data-del]"))){ if(confirm("Видалити запис?")){ try{ await api("DELETE","/api/"+m.dataset.del+"/"+m.dataset.delid); render(); }catch(err){ toast("⚠️ "+err.message); } } }
     else if((m=e.target.closest("[data-delfile]"))){ if(confirm("Видалити файл?")){ try{ await api("DELETE","/api/files/"+m.dataset.delfile); render(); }catch(err){ toast("⚠️ "+err.message); } } }
+    else if((m=e.target.closest("[data-delcomment]"))){ if(confirm("Видалити коментар?")){ try{ await api("DELETE","/api/comments/"+m.dataset.delcomment); render(); }catch(err){ toast("⚠️ "+err.message); } } }
     else if((m=e.target.closest("[data-delcontract]"))){ if(confirm("Видалити весь договір разом з усіма даними?")){ try{ await api("DELETE","/api/contracts/"+m.dataset.delcontract); go("contracts"); }catch(err){ toast("⚠️ "+err.message); } } }
   });
   let statsT=null;

@@ -93,8 +93,9 @@ app.post("/api/users/:id/reset-password", requireAuth, (req, res) => {
 /* ---------------- схеми дочірніх таблиць ---------------- */
 const T = {                       // поле → тип: s=string, r=real, b=bool, u=user-id(string)
   contracts: { table: "contracts", cols: { tender_no:"s", contract_no:"s", buyer:"s", edrpou:"s", contact_person:"s", phone:"s", email:"s",
-      manager_id:"u", win_date:"s", sign_date:"s", total_sum:"r", valid_until:"s", total_volume:"s", delivery_terms:"s",
+      manager_id:"u", win_date:"s", sign_date:"s", total_sum:"r", valid_until:"s", total_volume:"s", plan_qty:"r", unit:"s", delivery_terms:"s",
       payment_terms:"s", delivery_addr:"s", tender_url:"s", status:"s", notes:"s" } },
+  tasks: { table: "custom_tasks", cols: { title:"s", due_date:"s", responsible_id:"u", done:"b" } },
   samples: { table: "samples", cols: { description:"s", qty:"s", specs:"s", due_date:"s", sent_date:"s", ttn:"s",
       sender_id:"u", controller_id:"u", received:"b", quality_ok:"b", remarks:"s", resend:"b" } },
   production: { table: "production", cols: { product:"s", specification:"s", dims:"s", color_print:"s", planned_qty:"s",
@@ -129,7 +130,7 @@ function rowToCamel(row) {
 /* дочірні записи: створити / оновити / видалити */
 const CHILD_PARENT = { samples: "samples", production: "production", shipments: "shipments", documents: "documents", payments: "payments" };
 app.post("/api/contracts/:cid/:child", requireAuth, (req, res, next) => {
-  if (req.params.child === "files") return next(); // обробляється окремим маршрутом нижче
+  if (req.params.child === "files" || req.params.child === "comments") return next(); // окремі маршрути нижче
   const spec = T[req.params.child]; if (!spec || req.params.child === "contracts") return res.status(404).json({ error: "Невідомий розділ." });
   const c = db.prepare("SELECT id FROM contracts WHERE id=?").get(req.params.cid);
   if (!c) return res.status(404).json({ error: "Договір не знайдено." });
@@ -139,11 +140,26 @@ app.post("/api/contracts/:cid/:child", requireAuth, (req, res, next) => {
   if (sets.length) db.prepare(`UPDATE ${spec.table} SET ${sets.join(",")} WHERE id=?`).run(...vals, id);
   broadcast(); res.json({ id });
 });
+const isDateCol = col => /(_date|_ready)$/.test(col) || col === "valid_until";
 app.patch("/api/:child/:id", requireAuth, (req, res) => {
   const spec = T[req.params.child]; if (!spec) return res.status(404).json({ error: "Невідомий розділ." });
-  const row = db.prepare(`SELECT id FROM ${spec.table} WHERE id=?`).get(req.params.id);
+  const row = db.prepare(`SELECT * FROM ${spec.table} WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).json({ error: "Запис не знайдено." });
-  const { sets, vals } = buildSet(spec, req.body || {});
+  const b = req.body || {};
+  // історія зміни термінів
+  const cid = req.params.child === "contracts" ? row.id : row.contract_id;
+  for (const [col, type] of Object.entries(spec.cols)) {
+    if (!isDateCol(col)) continue;
+    const camel = col.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    if (b[camel] == null && b[col] == null) continue;
+    const nv = String(b[camel] != null ? b[camel] : b[col] || "");
+    const ov = String(row[col] || "");
+    if (nv !== ov && (nv || ov)) {
+      db.prepare(`INSERT INTO date_history (id,contract_id,scope,field,old_val,new_val,user_id,created_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(uid(), cid, req.params.child, col, ov, nv, req.user.id, new Date().toISOString());
+    }
+  }
+  const { sets, vals } = buildSet(spec, b);
   if (req.params.child === "contracts") sets.push("updated_at=?"), vals.push(new Date().toISOString());
   if (sets.length) db.prepare(`UPDATE ${spec.table} SET ${sets.join(",")} WHERE id=?`).run(...vals, req.params.id);
   broadcast(); res.json({ ok: true });
@@ -155,14 +171,41 @@ app.delete("/api/:child/:id", requireAuth, (req, res) => {
 });
 
 /* створити договір */
+const STD_DOCS = ["Договір", "Специфікація", "Рахунок", "Видаткова накладна", "ТТН", "Податкова накладна", "Акт приймання-передачі", "Акт звірки"];
 app.post("/api/contracts", requireAuth, (req, res) => {
   const id = uid(), now = new Date().toISOString();
-  db.prepare(`INSERT INTO contracts (id,buyer,manager_id,win_date,status,created_at,updated_at) VALUES (?,?,?,?,'active',?,?)`)
-    .run(id, String((req.body && req.body.buyer) || "").slice(0, 300), req.user.id, todayKey(), now, now);
-  broadcast(); res.json({ id });
+  const seed = db.transaction(() => {
+    db.prepare(`INSERT INTO contracts (id,buyer,manager_id,win_date,status,created_at,updated_at) VALUES (?,?,?,?,'active',?,?)`)
+      .run(id, String((req.body && req.body.buyer) || "").slice(0, 300), req.user.id, todayKey(), now, now);
+    // авто-створення стандартних блоків (щоб нічого не забути)
+    db.prepare(`INSERT INTO samples (id,contract_id,created_at) VALUES (?,?,?)`).run(uid(), id, now);
+    db.prepare(`INSERT INTO production (id,contract_id,created_at) VALUES (?,?,?)`).run(uid(), id, now);
+    db.prepare(`INSERT INTO shipments (id,contract_id,num,unit,created_at) VALUES (?,?,?,?,?)`).run(uid(), id, "1", "кг", now);
+    db.prepare(`INSERT INTO payments (id,contract_id,kind,created_at) VALUES (?,?,?,?)`).run(uid(), id, "payment", now);
+    STD_DOCS.forEach(k => db.prepare(`INSERT INTO documents (id,contract_id,kind,status,created_at) VALUES (?,?,?,'todo',?)`).run(uid(), id, k, now));
+  });
+  seed(); broadcast(); res.json({ id });
 });
 app.delete("/api/contracts/:id", requireAuth, (req, res) => {
   db.prepare("DELETE FROM contracts WHERE id=?").run(req.params.id);
+  broadcast(); res.json({ ok: true });
+});
+
+/* коментарі */
+app.post("/api/contracts/:cid/comments", requireAuth, (req, res) => {
+  const c = db.prepare("SELECT id FROM contracts WHERE id=?").get(req.params.cid);
+  if (!c) return res.status(404).json({ error: "Договір не знайдено." });
+  const text = String((req.body && req.body.text) || "").trim().slice(0, 2000);
+  if (!text) return res.status(400).json({ error: "Порожній коментар." });
+  const id = uid();
+  db.prepare("INSERT INTO comments (id,contract_id,user_id,text,created_at) VALUES (?,?,?,?,?)")
+    .run(id, c.id, req.user.id, text, new Date().toISOString());
+  broadcast(); res.json({ id });
+});
+app.delete("/api/comments/:id", requireAuth, (req, res) => {
+  const cm = db.prepare("SELECT * FROM comments WHERE id=?").get(req.params.id);
+  if (cm && (cm.user_id === req.user.id || req.user.id === adminId()))
+    db.prepare("DELETE FROM comments WHERE id=?").run(req.params.id);
   broadcast(); res.json({ ok: true });
 });
 
@@ -180,8 +223,8 @@ app.post("/api/contracts/:cid/files", requireAuth, (req, res) => {
   const fileName = uid() + ext;
   fs.writeFileSync(path.join(UPLOAD_DIR, fileName), buf);
   const id = uid();
-  db.prepare(`INSERT INTO attachments (id,contract_id,scope,name,mime,size,file,uploaded_by,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
-    .run(id, c.id, String(b.scope || "contract"), name, String(b.mime || "").slice(0, 120), buf.length, fileName, req.user.id, new Date().toISOString());
+  db.prepare(`INSERT INTO attachments (id,contract_id,scope,ref_id,name,mime,size,file,uploaded_by,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, c.id, String(b.scope || "contract"), String(b.refId || ""), name, String(b.mime || "").slice(0, 120), buf.length, fileName, req.user.id, new Date().toISOString());
   broadcast(); res.json({ id });
 });
 app.get("/api/files/:id", requireAuth, (req, res) => {
@@ -211,15 +254,24 @@ function contractChildren(cid) {
     shipments: db.prepare("SELECT * FROM shipments WHERE contract_id=? ORDER BY rowid").all(cid).map(rowToCamel),
     documents: db.prepare("SELECT * FROM documents WHERE contract_id=? ORDER BY rowid").all(cid).map(rowToCamel),
     payments: db.prepare("SELECT * FROM payments WHERE contract_id=? ORDER BY rowid").all(cid).map(rowToCamel),
-    attachments: db.prepare("SELECT id,scope,name,mime,size,created_at FROM attachments WHERE contract_id=? ORDER BY created_at").all(cid).map(rowToCamel)
+    tasks: db.prepare("SELECT * FROM custom_tasks WHERE contract_id=? ORDER BY rowid").all(cid).map(rowToCamel),
+    attachments: db.prepare("SELECT id,scope,ref_id,name,mime,size,created_at FROM attachments WHERE contract_id=? ORDER BY created_at").all(cid).map(rowToCamel),
+    comments: db.prepare("SELECT * FROM comments WHERE contract_id=? ORDER BY created_at DESC").all(cid).map(r => ({ ...rowToCamel(r), userName: userName(r.user_id) })),
+    history: db.prepare("SELECT * FROM date_history WHERE contract_id=? ORDER BY created_at DESC").all(cid).map(r => ({ ...rowToCamel(r), userName: userName(r.user_id) }))
   };
 }
+const today = () => todayKey();
+function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 function contractComputed(c, ch) {
   const paid = sum(ch.payments.filter(p => p.actualDate), p => p.amount);
   const shipped = sum(ch.shipments.filter(s => s.actualDate), s => s.qty);
+  const planQty = c.plan_qty || 0;
+  // прострочена заборгованість: планові оплати з датою в минулому й без фактичної
+  const overdueDebt = sum(ch.payments.filter(p => !p.actualDate && p.plannedDate && p.plannedDate < today()), p => p.amount);
   return {
     paid, debt: Math.max(0, (c.total_sum || 0) - paid),
-    shippedQty: shipped
+    shippedQty: shipped, planQty, unit: c.unit || "",
+    remainingQty: Math.max(0, planQty - shipped), overdueDebt
   };
 }
 
@@ -270,6 +322,9 @@ function deriveTasks(c, ch) {
   ch.payments.forEach(p => {
     if (!p.actualDate) tasks.push({ ...base, kind: "payment", title: "Контроль оплати" + (p.amount ? " · " + Math.round(p.amount).toLocaleString("uk-UA") + " грн" : ""),
       due: p.plannedDate || "", responsibleId: p.responsibleId });
+  });
+  (ch.tasks || []).forEach(t => {
+    if (!t.done && (t.title || "").trim()) tasks.push({ ...base, kind: "task", title: t.title, due: t.dueDate || "", responsibleId: t.responsibleId });
   });
   return tasks;
 }
