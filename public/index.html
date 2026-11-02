@@ -6,10 +6,11 @@
 <title>Пласт Інвест — супровід тендерів</title>
 <style>
   :root{
-    --bg:#0a0f1a; --panel:#0f1727; --panel-2:#13203a; --card:#14223c; --card-2:#17284a;
-    --line:#223354; --line-2:#2c4168; --fg:#eef3fb; --muted:#9db0cf; --muted-2:#6c81a6;
-    --accent:#3b7bf6; --accent-2:#6aa0ff; --accent-soft:#16305e;
-    --good:#45c586; --good-soft:#0f2a1d; --warn:#eab54a; --warn-soft:#2a230f; --bad:#ff7a66; --bad-soft:#2c1512;
+    --bg:#0d0e12; --panel:#15161d; --panel-2:#1b1d27; --card:#181a23; --card-2:#1e212d;
+    --line:#2a2d39; --line-2:#3a4052; --fg:#eef1f6; --muted:#a6adbd; --muted-2:#767d8f;
+    --accent:#e8842e; --accent-2:#f6a550; --accent-soft:#3a2714;
+    --teal:#2bb6a6;
+    --good:#45c586; --good-soft:#102a1e; --warn:#edb63f; --warn-soft:#2a2410; --bad:#ff7a66; --bad-soft:#2c1512;
     --radius:16px; --radius-sm:11px; --shadow:0 20px 50px -24px rgba(0,0,0,.75);
     --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; --mono:ui-monospace,Menlo,monospace;
     color-scheme:dark;
@@ -17,9 +18,9 @@
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
   body{background:
-      radial-gradient(1100px 520px at 90% -10%,#1b2b52 0%,transparent 55%),
-      radial-gradient(820px 460px at 0% 106%,#2c2010 0%,transparent 52%),
-      radial-gradient(700px 500px at 50% 120%,#1a1030 0%,transparent 55%),
+      radial-gradient(1100px 520px at 90% -10%,#2a2016 0%,transparent 55%),
+      radial-gradient(820px 460px at 0% 106%,#2b1e10 0%,transparent 52%),
+      radial-gradient(700px 500px at 50% 122%,#241a12 0%,transparent 55%),
       var(--bg);
        color:var(--fg);font-family:var(--font);font-size:14.5px;line-height:1.45;-webkit-font-smoothing:antialiased}
   button{font-family:inherit;cursor:pointer}
@@ -92,7 +93,7 @@
   .counter .l{color:var(--muted);font-size:12.5px;margin-top:7px}
   .counter.red{border-color:#3a2420;border-top-color:var(--bad)} .counter.red .n{color:var(--bad)}
   .counter.amber{border-color:#3a3220;border-top-color:var(--warn)} .counter.amber .n{color:var(--warn)}
-  .counter.blue{border-top-color:var(--accent-2)} .counter.blue .n{color:var(--accent-2)}
+  .counter.blue{border-top-color:var(--teal)} .counter.blue .n{color:var(--teal)}
   .counter.green{border-color:#1c3b2b;border-top-color:var(--good)} .counter.green .n{color:var(--good)}
 
   .escal{background:var(--bad-soft);border:1px solid #5a2a26;color:#ffb3a7;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13.5px}
@@ -108,7 +109,7 @@
   .task .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;flex:none;background:var(--panel-2);border:1px solid var(--line)}
   .task .ic.k-sample{color:#2dd4bf;background:#0e2724;border-color:#1b4a46}
   .task .ic.k-production{color:#a78bfa;background:#191633;border-color:#352b63}
-  .task .ic.k-shipment{color:#60a5fa;background:#0f1d3a;border-color:#23406e}
+  .task .ic.k-shipment{color:#39c9b8;background:#0e2a27;border-color:#1d4a44}
   .task .ic.k-document{color:#f0c56a;background:#271f0d;border-color:#4a3c1c}
   .task .ic.k-payment{color:#5fd39b;background:#0e2619;border-color:#1c4631}
   .task .ic.k-task{color:#f472b6;background:#2a1526;border-color:#4a2238}
@@ -142,7 +143,7 @@
   .back{background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--fg);width:38px;height:38px;font-size:16px;flex:none}
   .stats{display:flex;gap:10px;flex-wrap:wrap}
   .stat{background:var(--panel);border:1px solid var(--line);border-left-width:3px;border-radius:12px;padding:9px 14px;min-width:120px}
-  .stat.s-sum{border-left-color:var(--accent-2)} .stat.s-paid{border-left-color:var(--good)} .stat.s-debt{border-left-color:var(--bad)}
+  .stat.s-sum{border-left-color:var(--teal)} .stat.s-paid{border-left-color:var(--good)} .stat.s-debt{border-left-color:var(--bad)}
   .stat .l{font-size:10.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em}
   .stat .v{font-weight:800;font-size:16px;margin-top:2px}
   .stat .v.debt{color:var(--bad)} .stat .v.paid{color:var(--good)}
