@@ -1,351 +1,164 @@
 <!doctype html>
-<html lang="en">
+<html lang="uk">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ANEON</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<title>ANEON — облік тендерів</title>
 <style>
   :root{
-    --bg:#081423;--bg-2:#0c1d31;--surface:#11263f;--surface-2:#17304e;--surface-3:#1f3c5e;
-    --line:rgba(140,174,214,.16);--line-strong:rgba(140,174,214,.32);
-    --fg:#eaf1fb;--muted:#92a9c9;--muted-2:#6d86a6;
-    --accent:#1668e3;--accent-bright:#3b8bff;--accent-soft:rgba(22,104,227,.16);
-    --gold:#d8ab52;--gold-soft:rgba(216,171,82,.15);
-    --good:#32c08a;--warn:#e7b24a;--crit:#e5674f;--crit-soft:rgba(229,103,79,.14);
-    --radius:16px;--radius-sm:11px;--shadow:0 18px 40px -22px rgba(0,0,0,.8);
-    --page-grad:radial-gradient(1200px 520px at 82% -8%,rgba(22,104,227,.18),transparent 60%),radial-gradient(900px 440px at 4% 2%,rgba(216,171,82,.07),transparent 55%);
-    --font-display:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;
-    --font-body:"Manrope",-apple-system,system-ui,sans-serif;
-    --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --bg:#0b1220; --bg-2:#0e1626; --surface:#111c30; --surface-2:#13203a; --surface-3:#1a2b48;
+    --line:#223354; --line-strong:#2f456e; --fg:#eaf1fb; --muted:#9fb0cc; --muted-2:#6f84a6;
+    --accent:#2f6df0; --accent-bright:#5b8cff; --accent-soft:#17315f;
+    --good:#49c17a; --warn:#e6b23c; --bad:#ff8f78; --gold:#f2c94c;
+    --radius:16px; --radius-sm:12px; --shadow:0 18px 40px -20px rgba(0,0,0,.7);
+    --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --font-display:var(--font); --font-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
     color-scheme:dark;
   }
-  :root[data-theme="light"]{
-    --bg:#eaeff7;--bg-2:#ffffff;--surface:#ffffff;--surface-2:#f2f6fc;--surface-3:#e5ebf5;
-    --line:rgba(24,46,78,.12);--line-strong:rgba(24,46,78,.22);
-    --fg:#0d1f36;--muted:#53688a;--muted-2:#7d90ab;
-    --accent:#1668e3;--accent-bright:#1457c0;--accent-soft:rgba(22,104,227,.12);
-    --gold:#a67c2e;--gold-soft:rgba(176,132,47,.16);
-    --good:#1a9c6b;--warn:#b9811a;--crit:#cf4a34;--crit-soft:rgba(207,74,52,.12);
-    --shadow:0 16px 34px -20px rgba(24,46,78,.4);
-    --page-grad:radial-gradient(1200px 520px at 82% -8%,rgba(22,104,227,.10),transparent 60%),radial-gradient(900px 440px at 4% 2%,rgba(176,132,47,.07),transparent 55%);
-    color-scheme:light;
-  }
-  /* a few spots use literal light-on-dark colors — fix them for the light theme */
-  :root[data-theme="light"] .pill.recur{color:#4b45b0}
-  :root[data-theme="light"] .shift-chip.night{color:#4b45b0;background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.3)}
-  :root[data-theme="light"] .pill.p-high,:root[data-theme="light"] .pill.due.overdue,:root[data-theme="light"] .m-due.overdue{color:#c0392b}
-  :root[data-theme="light"] .m-recur{color:#4b45b0}
-  :root[data-theme="light"] .focus{border:1px solid var(--line-strong)}
   *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:var(--page-grad),var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-  button{font-family:inherit;color:inherit;cursor:pointer}
-  input,textarea,select{font-family:inherit}
-  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
-  img{max-width:100%}
-  [hidden]{display:none!important}
-  ::selection{background:rgba(59,139,255,.35)}
+  html,body{margin:0;height:100%}
+  body{background:
+      radial-gradient(1200px 600px at 80% -10%, #16233f 0%, transparent 60%),
+      var(--bg); color:var(--fg); font-family:var(--font); font-size:15px; line-height:1.4;
+      -webkit-font-smoothing:antialiased;}
+  button{font-family:inherit;cursor:pointer}
+  .in{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;color:var(--fg);
+      font-size:14px;padding:11px 12px;outline:none}
+  .in:focus{border-color:var(--accent)}
+  textarea.in{resize:vertical;min-height:62px;line-height:1.45}
+  label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+        font-weight:700;margin-bottom:6px}
+  .btn{background:var(--accent);border:none;color:#fff;font-weight:700;font-size:14px;padding:11px 16px;
+       border-radius:10px;transition:filter .15s}
+  .btn:hover{filter:brightness(1.07)}
+  .btn.block{width:100%}
+  .btn.ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .btn.danger{background:#3a1d22;border:1px solid #5e2a30;color:#ffb3a7}
 
-  .wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 160px;position:relative;z-index:2}
+  /* ---------- auth ---------- */
+  .auth{position:fixed;inset:0;display:grid;place-items:center;padding:20px}
+  .auth[hidden]{display:none}
+  .auth-card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line);
+             border-radius:var(--radius);padding:28px;box-shadow:var(--shadow)}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+        background:linear-gradient(150deg,var(--accent-bright),var(--accent));font-weight:800;font-size:19px;color:#fff}
+  .brand b{font-weight:800;font-size:18px;display:block;line-height:1.1}
+  .brand span{color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .auth h1{font-size:21px;margin:0 0 4px}
+  .auth .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .field{margin-bottom:14px}
+  .err{background:#2a1820;border:1px solid #5e2a30;color:#ffb3a7;font-size:13px;padding:10px 12px;
+       border-radius:10px;margin-bottom:14px;line-height:1.45}
+  .switch{text-align:center;color:var(--muted);font-size:13px;margin-top:16px}
+  .switch button{background:none;border:none;color:var(--accent-bright);font-weight:700;padding:0;font-size:13px}
+  .switch .sep{margin:0 8px;color:var(--line-strong)}
 
-  /* command bar */
-  .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
-  .brand .mark{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(150deg,var(--accent-bright),var(--accent));font-family:var(--font-display);font-weight:800;font-size:20px;color:#fff;box-shadow:0 6px 18px -6px rgba(22,104,227,.75)}
-  .brand b{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-.02em;display:block;line-height:1.1}
-  .brand span{color:var(--muted);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
-  .clocks{display:flex;gap:10px;flex-wrap:wrap}
-  .clock{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:7px 13px;min-width:112px}
-  .clock .city{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);display:flex;justify-content:space-between;gap:8px}
-  .clock .city em{font-style:normal;color:var(--accent-bright)}
-  .clock .time{font-family:var(--font-mono);font-weight:700;font-size:21px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin-top:2px}
-  .clock .time small{font-size:12px;color:var(--muted);font-weight:500}
-  .focus{display:flex;align-items:center;gap:12px;background:linear-gradient(130deg,#f4f6fb,#e7ebf3);border-radius:999px;padding:7px 10px 7px 18px;color:#0c1d31;box-shadow:var(--shadow)}
-  .focus .lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#5a6b82;font-weight:700}
-  .focus .fdisp{font-family:var(--font-mono);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:76px;text-align:center}
-  .focus .fdisp.run{color:var(--accent)}
-  .iconbtn{width:42px;height:42px;border-radius:50%;border:none;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:17px;transition:transform .12s,background .15s}
-  .iconbtn:hover{transform:scale(1.06)}.iconbtn.ghost{background:#0c1d31}.iconbtn:active{transform:scale(.95)}
-  .presets{display:flex;gap:4px}
-  .presets button{border:none;background:transparent;color:#5a6b82;font-weight:700;font-size:13px;padding:6px 8px;border-radius:8px;font-variant-numeric:tabular-nums}
-  .presets button.on{background:var(--accent);color:#fff}
-  .presets .unit{align-self:center;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8294ab}
-  #themeToggle{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:16px;display:grid;place-items:center;transition:border-color .15s,transform .1s}
-  #themeToggle:hover{border-color:var(--line-strong)}
-  #themeToggle:active{transform:scale(.92)}
-  .profbtn{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 14px 5px 6px;transition:border-color .15s}
-  .profbtn:hover{border-color:var(--line-strong)}
-  .profbtn .av{width:34px;height:34px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:15px;letter-spacing:-2px}
-  .profbtn .pn{font-weight:700;font-size:13px;line-height:1.15}
-  .profbtn .ps{font-size:11px;color:var(--gold);display:flex;align-items:center;gap:3px}
+  /* ---------- app shell ---------- */
+  .wrap{max-width:1500px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left,0)) 40px}
+  .topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .topbar .brand{margin:0}
+  .topbar .mark{width:40px;height:40px;border-radius:11px;font-size:17px}
+  .spacer{flex:1 1 auto}
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);
+          border-radius:999px;padding:8px 14px;min-width:220px}
+  .search input{background:none;border:none;color:var(--fg);outline:none;font-size:14px;width:100%}
+  .profbtn{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);
+           border-radius:999px;padding:6px 14px 6px 6px;color:var(--fg);font-weight:600;font-size:14px}
+  .profbtn .av{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-bright);
+               display:grid;place-items:center;font-weight:800;font-size:12px}
 
-  /* goal */
-  .goal{background:linear-gradient(135deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:var(--radius);padding:13px 16px;margin-bottom:14px}
-  .goal-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
-  .goal-head h2{font-size:16px}
-  .eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-bright);font-weight:700}
-  .goal-empty p{color:var(--muted);max-width:60ch;margin:6px 0 14px}
-  .btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;background:var(--accent);color:#fff;transition:filter .15s,transform .1s}
-  .btn:hover{filter:brightness(1.08)}.btn:active{transform:translateY(1px)}
-  .btn.sm{padding:7px 12px;font-size:12px}
-  .btn.ghost{background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
-  .btn.gold{background:linear-gradient(135deg,var(--gold),#c3923a);color:#2a1e06}
-  .btn.danger{background:transparent;border:1px solid var(--crit);color:var(--crit)}
-  .btn.danger:hover{background:var(--crit-soft)}
-  .btn.block{width:100%;justify-content:center;padding:12px}
-  .btn[disabled]{opacity:.55;cursor:default}
-  .gtitle{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-  .gtitle h2{font-size:16px}
-  .gtitle .meta{color:var(--muted);font-size:12px;margin-left:auto}
-  .gtitle .meta b{color:var(--fg)}
-  .track{position:relative;height:50px;margin:2px 4px 6px}
-  .track .rail{position:absolute;left:0;right:0;top:31px;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden}
-  .track .rail i{position:absolute;inset:0;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-bright));transition:width .6s cubic-bezier(.2,.8,.2,1)}
-  .track .runner{position:absolute;top:3px;transform:translateX(-50%);transition:left .6s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:3}
-  .track .runner .bub{width:30px;height:30px;border-radius:50%;background:#fff;color:#0c1d31;display:grid;place-items:center;font-size:15px;box-shadow:0 5px 13px -4px rgba(0,0,0,.6);border:2px solid var(--accent-bright)}
-  .track .runner .cap{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .track .finish{position:absolute;right:-4px;top:17px;font-size:21px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
-  .track .chest{position:absolute;top:20px;transform:translateX(-50%);font-size:17px;transition:transform .2s;filter:grayscale(.7) brightness(.8)}
-  .track .chest.open{filter:none;transform:translateX(-50%) scale(1.15)}
-  .track .dates{position:absolute;left:0;right:0;top:40px;display:flex;justify-content:space-between;color:var(--muted-2);font-size:10px;font-variant-numeric:tabular-nums}
-  .rewards{display:flex;gap:7px;flex-wrap:wrap}
-  .reward{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:11.5px}
-  .reward.open{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
-  .reward .pct{font-weight:700;font-variant-numeric:tabular-nums}
-
-  /* board */
-  .board-head{display:flex;align-items:center;gap:10px;margin:4px 2px 12px;flex-wrap:wrap}
-  .board-head h2{font-size:15px}
-  .board-head .hint{color:var(--muted-2);font-size:11.5px;margin-left:auto}
-  .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
-  .tabs button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
-  .tabs button.on{background:var(--accent);color:#fff}
-  .tab-count{font-size:11px;font-weight:700;background:rgba(255,255,255,.22);padding:1px 7px;border-radius:999px;min-width:18px;text-align:center}
-  .tabs button:not(.on) .tab-count{background:var(--surface-3);color:var(--muted)}
-  .pill.recur{background:rgba(99,102,241,.16);color:#b4bcff}
-  .recur-head{font-family:var(--font-display);font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:7px;flex:1;min-width:0}
-  .board{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 18px;scroll-snap-type:x proximity}
+  /* ---------- board ---------- */
+  .board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}
   .board::-webkit-scrollbar{height:9px}.board::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:9px}
-  .col{flex:0 0 286px;scroll-snap-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:9px;align-self:flex-start;max-height:70vh}
-  .col-head{display:flex;align-items:center;gap:6px}
-  .col-head input{flex:1;min-width:0;background:transparent;border:none;color:var(--fg);font-family:var(--font-display);font-weight:700;font-size:14.5px;padding:3px 2px;border-radius:6px}
-  .col-head input:focus{outline:none;background:var(--surface-2)}
-  .col-count{font-size:11px;color:var(--muted-2);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .col-head .mini{width:24px;height:24px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-size:13px;display:grid;place-items:center}
-  .col-head .mini:hover{background:var(--surface-2);color:var(--fg)}
-  .cards{display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding:2px 2px 2px 0}
-  .card{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:15px 16px 14px 18px;display:flex;flex-direction:column;gap:14px;transition:border-color .15s;box-shadow:inset 3px 0 0 var(--pc,transparent)}
-  .card[data-prio="high"]{--pc:var(--crit)}
-  .card[data-prio="med"]{--pc:var(--gold)}
-  .card[data-prio="low"]{--pc:var(--good)}
+  .col{flex:0 0 320px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+       display:flex;flex-direction:column;max-height:calc(100vh - 150px)}
+  .col.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft) inset}
+  .col-head{display:flex;align-items:center;gap:8px;padding:13px 14px 10px}
+  .col-head .nm{font-weight:800;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .col-head .cnt{color:var(--muted-2);font-size:12px;font-weight:700;background:var(--bg-2);border-radius:999px;padding:2px 8px}
+  .col-head .ca{display:flex;gap:3px;opacity:0;transition:opacity .15s}
+  .col:hover .col-head .ca{opacity:1}
+  .col-head .ca button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);
+                       color:var(--muted);font-size:12px;display:grid;place-items:center}
+  .col-head .ca button:hover{color:var(--fg);border-color:var(--line-strong)}
+  .cards{display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding:4px 12px;min-height:30px}
+  .cards::-webkit-scrollbar{width:8px}.cards::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:8px}
+  .addt{margin:6px 12px 14px;border:1px dashed var(--line-strong);background:none;color:var(--muted);
+        border-radius:10px;padding:10px;font-weight:600;font-size:13px}
+  .addt:hover{color:var(--fg);border-color:var(--accent)}
+
+  .card{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+        padding:13px 14px;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;gap:9px}
   .card:hover{border-color:var(--line-strong)}
-  .card.done{opacity:.55}
-  .card-top{display:flex;gap:9px;align-items:flex-start}
-  .chk{flex:0 0 auto;width:22px;height:22px;border-radius:7px;border:2px solid var(--line-strong);background:transparent;display:grid;place-items:center;font-size:13px;color:#fff;margin-top:1px;transition:background .15s,border-color .15s}
-  .chk.on{background:var(--good);border-color:var(--good)}
-  .card .ttl{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.35;cursor:pointer;word-break:break-word}
-  .card.done .ttl{text-decoration:line-through;text-decoration-color:var(--muted-2)}
-  /* compact meta line: due · recur · project … avatar */
-  /* fixed 2x2 slots: project | deadline  /  recurrence | assignee */
-  .card-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 16px;align-items:center;font-size:11.5px;color:var(--muted);line-height:1.25}
-  .card-meta:empty{display:none}
-  .m-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;color:var(--muted);font-weight:500}
-  .m-item .ic{flex:none;font-size:10.5px;line-height:1;opacity:.85}
-  .m-item .t{overflow:hidden;text-overflow:ellipsis}
-  .s-proj{grid-column:1;grid-row:1}
-  .s-dl{grid-column:2;grid-row:1;justify-self:end}
-  .s-recur{grid-column:1;grid-row:2}
-  .s-name{grid-column:2;grid-row:2;justify-self:end;max-width:120px}
-  .m-due.overdue{color:#ff8f78;font-weight:600}
-  .m-due.today{color:var(--gold);font-weight:600}
-  .avatar{width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent-bright);font-size:9px;font-weight:800;display:grid;place-items:center;flex:0 0 auto}
-  .dust-ctl{display:flex;align-items:center;gap:7px;margin-left:auto}
-  .dust-ctl button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:15px;line-height:1;display:grid;place-items:center}
-  .dust-ctl button:hover{border-color:var(--line-strong)}
-  .dust-ctl .n{font-weight:700;font-variant-numeric:tabular-nums;min-width:34px;text-align:center;display:flex;align-items:center;gap:2px;justify-content:center}
-  .dust-ctl .du{font-size:11px;opacity:.8}
-  .addtask,.addcol{border:1px dashed var(--line-strong);background:transparent;color:var(--muted);border-radius:var(--radius-sm);padding:10px;font-weight:600;font-size:13px;text-align:left;transition:color .15s,border-color .15s}
-  .addtask:hover,.addcol:hover{color:var(--fg);border-color:var(--accent)}
-  .addcol{flex:0 0 200px;align-self:flex-start;text-align:center;padding:16px}
-  .card:hover{transform:translateY(-1px)}
-  .card{cursor:grab}
-  .card:active{cursor:grabbing}
-  .card.dragging{opacity:.4;cursor:grabbing}
-  .drop-line{height:3px;border-radius:2px;background:var(--accent-bright);box-shadow:0 0 8px -1px var(--accent-bright);flex:0 0 auto}
-  .chk:active{transform:scale(.88)}
-  .col.weekly{border-color:rgba(216,171,82,.45);box-shadow:0 0 0 1px rgba(216,171,82,.16) inset,var(--shadow)}
-  .col-head .mini.on{background:var(--gold-soft);color:var(--gold)}
-  .weekly-tag{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:var(--gold-soft);border:1px solid rgba(216,171,82,.3);border-radius:7px;padding:4px 9px;font-weight:700;align-self:flex-start;display:inline-flex;align-items:center;gap:5px}
-  .shift-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
-  .shift-chip.night{background:rgba(99,102,241,.16);border-color:rgba(129,140,248,.4);color:#b4bcff}
-  .shift-chip.day{background:rgba(231,178,74,.14);border-color:rgba(231,178,74,.4);color:var(--gold)}
-  .crew .shiftdot{margin-left:auto;font-size:13px}
-  .crew-sub{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:700;margin-top:6px}
+  .card.dragging{opacity:.5}
+  .card .buyer{font-weight:700;font-size:14.5px;line-height:1.3;word-break:break-word}
+  .card .prod{color:var(--muted);font-size:13px;line-height:1.35;word-break:break-word}
+  .card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11.5px}
+  .chip{display:inline-flex;align-items:center;gap:4px;background:var(--bg-2);border:1px solid var(--line);
+        border-radius:999px;padding:3px 9px;color:var(--muted);font-weight:600;max-width:100%;overflow:hidden;
+        text-overflow:ellipsis;white-space:nowrap}
+  .chip.c-none{color:var(--muted-2)}
+  .chip.c-unsigned{color:#f0c572;border-color:#4a3c1c;background:#231c0c}
+  .chip.c-signed{color:#7ee0a6;border-color:#1e4631;background:#0e2619}
+  .chip.deliver{color:#8fb6ff;border-color:#243a66;background:#0f1d38}
 
-  /* dust layer */
-  .dust-layer{position:fixed;left:0;right:0;bottom:0;height:150px;pointer-events:none;z-index:1;overflow:hidden}
-  .dustbunny{position:absolute;bottom:13px;width:26px;height:24px;will-change:transform;font-size:19px;line-height:24px;text-align:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-  .vomit-layer{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .6s ease}
-  .vomit-layer.on{opacity:1}
-  .vomit-body{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(#89a31d,#556d0f);transition:height .9s cubic-bezier(.33,.1,.25,1)}
-  .vomit-surf{position:absolute;left:0;right:0;bottom:0;height:96px;transition:bottom .9s cubic-bezier(.33,.1,.25,1)}
-  .vomit-surf svg{width:100%;height:100%;display:block}
-  .dust-count{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--muted);pointer-events:none}
-  .dust-count b{color:var(--fg)}
-  /* Mascot — Sweepy the duck (own on-top layer, pinned to the bottom edge) */
-  .mascot{position:fixed;left:0;bottom:calc(6px + env(safe-area-inset-bottom,0px));width:92px;height:72px;z-index:6;pointer-events:none;will-change:transform}
-  .mascot .duck-flip{width:100%;height:100%}
-  .mascot.flip .duck-flip{transform:scaleX(-1)}
-  .mascot .duck{width:100%;height:100%;display:block;transform-origin:center bottom;animation:waddle .6s ease-in-out infinite}
-  @keyframes waddle{0%,100%{transform:rotate(-2.5deg) translateY(0)}50%{transform:rotate(2.5deg) translateY(-2px)}}
-  .mascot .say{position:absolute;bottom:64px;left:50%;transform:translateX(-50%) translateY(4px) scale(.85);transform-origin:bottom center;background:#fff;color:#0c1d31;font-weight:700;font-size:11px;padding:5px 11px;border-radius:12px;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;box-shadow:0 8px 18px -8px rgba(0,0,0,.6)}
-  .mascot .say::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
-  .mascot .say.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
-
-  /* overlays */
-  .scrim{position:fixed;inset:0;background:rgba(4,10,18,.72);backdrop-filter:blur(3px);z-index:40;display:grid;place-items:start center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) 16px 40px}
-  .sheet{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--line-strong);border-radius:20px;box-shadow:var(--shadow);margin-top:24px;overflow:hidden}
-  .sheet.wide{max-width:600px}
-  .sheet-head{display:flex;align-items:center;gap:10px;padding:18px 20px 12px}
-  .sheet-head h2{font-size:18px;flex:1}
-  .sheet-body{padding:4px 20px 20px;display:flex;flex-direction:column;gap:16px}
-  .x{width:32px;height:32px;border-radius:9px;border:none;background:var(--surface-2);color:var(--muted);font-size:16px;display:grid;place-items:center}
-  .x:hover{color:var(--fg)}
-  .field{display:flex;flex-direction:column;gap:6px}
-  .field>label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .in{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font-size:14px;width:100%}
-  .in:focus{outline:none;border-color:var(--accent)}
-  textarea.in{resize:vertical;min-height:62px;line-height:1.5}
+  /* ---------- sheet / modal ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(5,10,20,.66);backdrop-filter:blur(3px);z-index:50;
+         display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto}
+  .scrim[hidden]{display:none}
+  .sheet{width:100%;max-width:620px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+         box-shadow:var(--shadow);margin:auto}
+  .sheet-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .sheet-head h2{font-size:17px;margin:0;flex:1}
+  .sheet-head .x{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);
+                 color:var(--muted);font-size:15px}
+  .sheet-body{padding:18px;display:flex;flex-direction:column;gap:14px}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .seg{display:flex;gap:6px;flex-wrap:wrap}
-  .seg button{border:1px solid var(--line);background:var(--bg-2);color:var(--muted);border-radius:9px;padding:8px 13px;font-weight:600;font-size:12.5px}
-  .seg button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}
-  .dustbox,.timerbox{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px}
-  .dustbox .hd,.timerbox .hd{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
-  .dustrow{display:flex;align-items:center;gap:10px}
-  .dustrow .big{font-family:var(--font-mono);font-weight:700;font-size:24px;font-variant-numeric:tabular-nums;min-width:42px;text-align:center}
-  .dustrow button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:20px;line-height:1}
-  .dustbox p,.timerbox p{color:var(--muted-2);font-size:11.5px;margin:9px 0 0;line-height:1.45}
-  .tdisp{font-family:var(--font-mono);font-weight:700;font-size:32px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em}
-  .tdisp.run{color:var(--accent-bright)}
-  .tctl{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .tctl .in{flex:1;min-width:80px}
+  .seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+  .seg button{border:none;background:none;color:var(--muted);font-weight:700;font-size:13px;padding:7px 14px;border-radius:7px}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg.green button.on{background:var(--good)}
+  .section-cap{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:700;
+               margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
+  .sheet-foot{display:flex;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
+  .hint{color:var(--muted-2);font-size:12px}
 
-  /* profile */
-  .streakbars{display:flex;gap:5px;flex-wrap:wrap}
-  .sb{width:30px;height:16px;border-radius:5px;background:var(--surface-3)}
-  .sb.on{background:linear-gradient(135deg,var(--gold),#c3923a)}
-  .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:7px}
-  .emoji-grid button{aspect-ratio:1;border:1px solid var(--line);background:var(--bg-2);border-radius:10px;font-size:19px;display:grid;place-items:center;transition:border-color .12s}
-  .emoji-grid button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
-  .emoji-pick{display:flex;flex-wrap:wrap;gap:6px}
-  .emoji-pick button{width:38px;height:38px;border:1px solid var(--line);background:var(--bg-2);border-radius:9px;font-size:18px;display:grid;place-items:center;transition:border-color .12s}
-  .emoji-pick button.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
-  .chkline{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px}
-  .chkline .box{flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:2px solid var(--line-strong);display:grid;place-items:center;font-size:12px;color:#fff;margin-top:1px}
-  .chkline .box.on{background:var(--accent);border-color:var(--accent)}
-  .chkline small{color:var(--muted-2);display:block;font-size:11.5px}
-  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px}
-  .ach{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:3px;opacity:.5;transition:opacity .2s}
-  .ach.on{opacity:1;border-color:var(--gold);background:linear-gradient(145deg,var(--gold-soft),transparent)}
-  .ach .ic{font-size:22px}.ach .an{font-weight:700;font-size:12.5px}
-  .ach .ad{font-size:10.5px;color:var(--muted-2);line-height:1.35}
-  .ach.on .an{color:var(--gold)}
-  .section-cap{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:4px}
-  .crew{display:flex;flex-direction:column;gap:7px}
-  .crew .row{display:flex;align-items:center;gap:9px;font-size:13px}
-  .crew .av{width:30px;height:30px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:13px;letter-spacing:-2px}
-  .crew .nm{font-weight:600}.crew .st{color:var(--muted-2);font-size:11.5px}
-  .crew .fire{margin-left:auto;color:var(--gold);font-size:12px;font-weight:700}
-  .crew .row{padding:3px 0}
-  .crew .toss-n{color:var(--muted-2);font-size:11px;font-weight:700;margin-left:2px}
-  .crew-actions{display:inline-flex;gap:4px;margin-left:auto}
-  .crew-actions button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);font-size:14px;display:grid;place-items:center;transition:border-color .12s,transform .1s}
-  .crew-actions button:hover{border-color:var(--accent)}
-  .crew-actions button:active{transform:scale(.9)}
-  /* task reactions */
-  .rx-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-  .rx-add-float{position:absolute;right:11px;bottom:10px;background:var(--surface-2)!important}
-  .rx-add{opacity:0;transition:opacity .12s}
-  .card:hover .rx-add,.rx-add:focus-visible{opacity:.7}
-  .rx-row:hover .rx-add{opacity:1}
-  .rx{display:inline-flex;align-items:center;gap:4px;background:var(--surface-3);border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;cursor:pointer;transition:border-color .12s,background .12s}
-  .rx.mine{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-bright)}
-  .rx .c{font-variant-numeric:tabular-nums}
-  .rx-add{width:24px;height:24px;border-radius:999px;border:1px dashed var(--line-strong);background:transparent;color:var(--muted);font-size:13px;display:grid;place-items:center}
-  .rx-add:hover{color:var(--fg);border-color:var(--accent)}
-  .rx-pop{display:flex;gap:4px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:6px;box-shadow:var(--shadow)}
-  .rx-pop button{width:30px;height:30px;border-radius:8px;border:none;background:transparent;font-size:17px}
-  .rx-pop button:hover{background:var(--surface-2)}
-  .rx-pop.pass-pop{flex-direction:column;gap:2px;padding:8px;max-width:280px;align-items:stretch}
-  .pass-h{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:2px 6px 6px}
-  .pass-item{width:auto!important;height:auto!important;text-align:left;font-size:13px!important;font-weight:600;color:var(--fg);padding:8px 10px!important;border-radius:9px!important;display:flex;align-items:center;gap:8px;justify-content:space-between}
-  .pass-dust{color:var(--muted-2);font-size:11px;font-weight:700;white-space:nowrap}
-  /* flying nudge emoji */
-  .nudge-fly{position:fixed;z-index:70;font-size:34px;pointer-events:none;will-change:transform,opacity}
-  @keyframes flyacross{0%{transform:translate(0,0) rotate(0);opacity:0}8%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
-  /* Sweepy's sweep-up burst on task completion */
-  .sweep-fx{position:fixed;z-index:69;font-size:20px;pointer-events:none;will-change:transform,opacity}
-  @keyframes sweeppop{0%{transform:translate(0,0) scale(.4);opacity:0}25%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:0}}
-  .mascot.scrub .duck{animation:scrub .5s ease}
-  @keyframes scrub{0%,100%{transform:translateY(0) rotate(-2deg)}30%{transform:translateY(-7px) rotate(-7deg)}65%{transform:translateY(0) rotate(6deg)}}
+  .crew-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .crew-row:last-child{border-bottom:none}
+  .crew-row .nm{flex:1;font-weight:600}
+  .crew-row .tag{font-size:11px;color:var(--muted-2)}
 
   .toast:empty{display:none}
-  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(calc(100% + 50px));z-index:60;background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;align-items:center;gap:8px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(calc(100% + 50px));z-index:70;
+         background:var(--surface-3);border:1px solid var(--gold);color:var(--fg);padding:11px 18px;border-radius:999px;
+         font-weight:600;font-size:13px;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.9,.3,1.2)}
   .toast.show{transform:translateX(-50%) translateY(0)}
 
-  /* auth */
-  .auth{min-height:100%;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-left,0px)) 40px}
-  .auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line-strong);border-radius:20px;box-shadow:var(--shadow);padding:26px 24px}
-  .auth-brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}
-  .auth-brand .mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(150deg,var(--accent-bright),var(--accent));font-family:var(--font-display);font-weight:800;font-size:22px;color:#fff}
-  .auth-brand b{font-family:var(--font-display);font-weight:800;font-size:18px;display:block;line-height:1.1}
-  .auth-brand span{color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
-  .auth h1{font-size:21px;margin-bottom:4px}
-  .auth .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
-  .auth form{display:flex;flex-direction:column;gap:12px}
-  .auth .err{background:var(--crit-soft);border:1px solid var(--crit);color:#ffb3a3;border-radius:9px;padding:9px 12px;font-size:12.5px}
-  .auth .switch{text-align:center;color:var(--muted);font-size:12.5px;margin-top:14px}
-  .auth .switch button{background:none;border:none;color:var(--accent-bright);font-weight:700;padding:0;font-size:12.5px}
-  .auth .switch .sw-sep{margin:0 8px;color:var(--line-strong)}
-
-  @media (max-width:640px){
-    .focus{order:5;width:100%;justify-content:space-between}
-    .brand{width:100%}.profbtn{order:4}
-    .row2{grid-template-columns:1fr}.wrap{padding-block:14px 150px}
-  }
-  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+  .empty{color:var(--muted-2);text-align:center;padding:30px 16px;font-size:13px}
+  @media (max-width:560px){ .row2{grid-template-columns:1fr} .col{flex-basis:84vw} }
 </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
+<!-- AUTH -->
 <div class="auth" id="authScreen" hidden>
   <div class="auth-card">
-    <div class="auth-brand">
-      <div class="mark">AT</div>
-      <div><b>ANEON</b><span>Internal team tracker</span></div>
-    </div>
-    <h1 id="authTitle">Welcome back</h1>
-    <p class="sub" id="authSub">Sign in to your crew board.</p>
+    <div class="brand"><div class="mark">AT</div><div><b>ANEON</b><span>Облік тендерів</span></div></div>
+    <h1 id="authTitle">З поверненням</h1>
+    <p class="sub" id="authSub">Увійдіть, щоб відкрити свою дошку тендерів.</p>
     <div class="err" id="authErr" hidden></div>
     <form id="authForm">
       <div class="field" id="nameField" hidden>
-        <label for="aName">Your name</label>
-        <input class="in" id="aName" autocomplete="name" placeholder="How the crew sees you">
+        <label for="aName">Ваше ім'я</label>
+        <input class="in" id="aName" autocomplete="name" placeholder="Як вас підписувати">
       </div>
-      <div class="field">
-        <label for="aEmail">Email</label>
-        <input class="in" id="aEmail" type="email" autocomplete="email" placeholder="you@hotel.com" required>
-      </div>
-      <div class="field">
-        <label for="aPass">Password</label>
-        <input class="in" id="aPass" type="password" autocomplete="current-password" placeholder="At least 8 characters" required>
-      </div>
-      <button class="btn block" id="authSubmit" type="submit">Sign in</button>
+      <div class="field"><label for="aEmail">Email</label>
+        <input class="in" id="aEmail" type="email" autocomplete="email" placeholder="you@company.com" required></div>
+      <div class="field"><label for="aPass">Пароль</label>
+        <input class="in" id="aPass" type="password" autocomplete="current-password" placeholder="Щонайменше 8 символів" required></div>
+      <button class="btn block" id="authSubmit" type="submit">Увійти</button>
     </form>
     <div class="switch" id="authSwitch"></div>
   </div>
@@ -354,903 +167,353 @@
 <!-- APP -->
 <div id="app" hidden>
   <div class="wrap">
-    <header class="topbar">
-      <div class="brand">
-        <div class="mark">AT</div>
-        <div><b>ANEON</b><span>Internal team tracker</span></div>
-      </div>
-      <div class="clocks" id="clocks"></div>
-      <div class="focus">
-        <div><div class="lbl">Focus timer</div><div class="fdisp" id="focusDisp">25:00</div></div>
-        <button class="iconbtn" id="focusToggle" title="Start / pause" aria-label="Start or pause">▶</button>
-        <button class="iconbtn ghost" id="focusReset" title="Reset" aria-label="Reset">↺</button>
-        <div class="presets" id="focusPresets">
-          <button data-min="15">15</button>
-          <button data-min="25" class="on">25</button>
-          <button data-min="50">50</button>
-          <span class="unit">min</span>
-        </div>
-      </div>
-      <button id="themeToggle" title="Switch theme" aria-label="Switch light or dark theme">☀️</button>
-      <button class="profbtn" id="profBtn" aria-label="Open your profile">
-        <span class="av" id="profAv">🧹</span>
-        <span><span class="pn" id="profName">You</span><span class="ps" id="profStreakWrap"><span id="profStreak">0</span>-day streak 🔥</span></span>
-        <span class="shift-chip" id="profShift" hidden></span>
-      </button>
-    </header>
-    <section id="goalWrap" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></section>
-    <div class="board-head">
-      <div class="tabs" id="viewTabs">
-        <button data-view="board" class="on">🗂️ Shift board</button>
-        <button data-view="projects">📁 Projects <span class="tab-count" id="projCount"></span></button>
-        <button data-view="recurring">🔁 Recurring <span class="tab-count" id="recurCount"></span></button>
-      </div>
-      <span class="hint" id="boardHint">Finishing a task clears its Ugh factor • everyone sees the same board live</span>
+    <div class="topbar">
+      <div class="brand"><div class="mark">AT</div><div><b>ANEON</b><span>Облік тендерів</span></div></div>
+      <div class="spacer"></div>
+      <div class="search"><span>🔎</span><input id="search" placeholder="Пошук: покупець або товар"></div>
+      <button class="btn ghost sm" id="addStage">+ Стадія</button>
+      <button class="profbtn" id="profBtn"><span class="av" id="profAv">?</span><span id="profName">—</span></button>
     </div>
     <div class="board" id="board"></div>
   </div>
-  <div class="vomit-layer" id="vomitLayer" aria-hidden="true"></div>
-  <div class="dust-layer" id="dustLayer" aria-hidden="true"></div>
-  <div class="dust-count" id="dustCount"></div>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="scrim" id="scrim" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-"use strict";
 (function(){
+  "use strict";
   const $ = s => document.querySelector(s);
-  const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const fmt = s => String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+  const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  const initials = n => (n||"").trim().split(/\s+/).map(w=>w[0]||"").join("").replace(/[^\p{L}\p{N}]/gu,"").slice(0,2).toUpperCase() || "?";
 
-  /* ---------- theme (dark / light) ---------- */
-  let theme="dark"; try{ const s=localStorage.getItem("hcb-theme"); if(s==="light"||s==="dark") theme=s; }catch(e){}
-  function applyTheme(t){
-    const root=document.documentElement;
-    if(t==="light") root.setAttribute("data-theme","light"); else root.removeAttribute("data-theme");
-    const b=$("#themeToggle"); if(b) b.textContent=(t==="light")?"🌙":"☀️";
-  }
-  applyTheme(theme);
-  (function wireTheme(){ const b=$("#themeToggle"); if(b) b.onclick=()=>{ theme=(theme==="light")?"dark":"light"; try{localStorage.setItem("hcb-theme",theme);}catch(e){} applyTheme(theme); }; })();
-
-  /* ---------- api ---------- */
   async function api(method, url, body){
-    const opt = { method, headers:{}, credentials:"same-origin" };
-    if(body!==undefined){ opt.headers["Content-Type"]="application/json"; opt.body=JSON.stringify(body); }
-    const r = await fetch(url, opt);
-    let data=null; try{ data=await r.json(); }catch(e){}
-    if(!r.ok){ const err=new Error((data&&data.error)||("Request failed ("+r.status+")")); err.status=r.status; throw err; }
+    const r = await fetch(url, { method, headers: body?{"Content-Type":"application/json"}:{}, body: body?JSON.stringify(body):undefined });
+    const ct = r.headers.get("content-type")||"";
+    const data = ct.includes("json") ? await r.json() : null;
+    if(!r.ok){ const e = new Error((data&&data.error)||("Помилка "+r.status)); e.status=r.status; throw e; }
     return data;
   }
 
-  /* ---------- state ---------- */
-  let state = { me:null, columns:[], recurring:[], goals:[], users:[] };
-  let view="board"; try{ const v=localStorage.getItem("hcb-view"); if(["board","recurring","projects"].includes(v)) view=v; }catch(e){}
-  const RECUR_LABEL={day:"Daily",week:"Weekly",month:"Monthly",quarter:"Quarterly"};
-  const WEEKDAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  const ordinal=n=>{ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
-  function recurBadge(t){
-    if(!t.recur) return "";
-    let suf="";
-    if(t.recur==="week" && t.recurAnchor!=null) suf=" "+WEEKDAYS[((t.recurAnchor%7)+7)%7];
-    else if((t.recur==="month"||t.recur==="quarter") && t.recurAnchor!=null) suf=" "+(t.recurAnchor===0?"last":ordinal(t.recurAnchor));
-    return `<span class="m-item m-recur s-recur" title="Repeats"><span class="ic">🔁</span>${RECUR_LABEL[t.recur]||"Repeats"}${suf}</span>`;
-  }
-  const RECUR_META=[
-    {key:"day",name:"Daily",note:"Resets every day",ic:"☀️"},
-    {key:"week",name:"Weekly",note:"Resets every Monday",ic:"📅"},
-    {key:"month",name:"Monthly",note:"Resets on the 1st",ic:"🗓️"},
-    {key:"quarter",name:"Quarterly",note:"Resets each quarter",ic:"📈"}
-  ];
-  let loadTimer=null, es=null;
+  const state = { me:null, stages:[], users:[], adminId:null };
+  let filter = "";
 
-  /* ---------- auth screen ---------- */
-  let mode="login";
-  function showAuth(){ $("#app").hidden=true; $("#authScreen").hidden=false; teardownApp(); renderAuthMode(); }
+  /* ---------- auth ---------- */
+  let mode = "login";
+  function showAuth(){ $("#app").hidden=true; $("#authScreen").hidden=false; teardownSSE(); renderAuthMode(); }
+  function enterApp(){ $("#authScreen").hidden=true; $("#app").hidden=false; }
   function renderAuthMode(){
     const signup = mode==="signup";
-    $("#authTitle").textContent = signup ? "Create your account" : "Welcome back";
-    $("#authSub").textContent   = signup ? "Join your crew board — takes a few seconds." : "Sign in to your crew board.";
+    $("#authTitle").textContent = signup ? "Створення акаунта" : "З поверненням";
+    $("#authSub").textContent = signup ? "Приєднайтесь до дошки тендерів — це кілька секунд." : "Увійдіть, щоб відкрити свою дошку тендерів.";
     $("#nameField").hidden = !signup;
     $("#aName").required = signup;
-    $("#authSubmit").textContent = signup ? "Create account" : "Sign in";
+    $("#authSubmit").textContent = signup ? "Створити акаунт" : "Увійти";
     $("#aPass").autocomplete = signup ? "new-password" : "current-password";
     $("#authSwitch").innerHTML = signup
-      ? `Already have an account? <button type="button" id="toLogin">Sign in</button>`
-      : `New here? <button type="button" id="toSignup">Create an account</button><span class="sw-sep">·</span><button type="button" id="toForgot">Forgot password?</button>`;
-    const sw=$("#"+(signup?"toLogin":"toSignup")); if(sw) sw.onclick=()=>{ mode=signup?"login":"signup"; hideErr(); renderAuthMode(); };
-    const fg=$("#toForgot"); if(fg) fg.onclick=()=>showErr("No email resets yet. Ask your workspace admin to reset your password — they do it from their profile → Crew, and give you a temporary one to log in with.");
+      ? `Вже є акаунт? <button type="button" id="toLogin">Увійти</button>`
+      : `Немає акаунта? <button type="button" id="toSignup">Створити</button><span class="sep">·</span><button type="button" id="toForgot">Забули пароль?</button>`;
+    const sw = $("#"+(signup?"toLogin":"toSignup")); if(sw) sw.onclick=()=>{ mode=signup?"login":"signup"; hideErr(); renderAuthMode(); };
+    const fg = $("#toForgot"); if(fg) fg.onclick=()=>showErr("Скидання паролю поки без email. Попросіть адміністратора скинути ваш пароль — він робить це у своєму профілі → Користувачі, і дає вам тимчасовий пароль для входу.");
     hideErr();
   }
   function showErr(m){ const e=$("#authErr"); e.textContent=m; e.hidden=false; }
   function hideErr(){ $("#authErr").hidden=true; }
-  $("#authForm").addEventListener("submit", async e=>{
+
+  $("#authForm").addEventListener("submit", async e => {
     e.preventDefault(); hideErr();
-    const btn=$("#authSubmit"); btn.disabled=true;
+    const name=$("#aName").value.trim(), email=$("#aEmail").value.trim(), password=$("#aPass").value;
     try{
-      const payload={ email:$("#aEmail").value.trim(), password:$("#aPass").value };
-      if(mode==="signup") payload.name=$("#aName").value.trim();
-      const res = await api("POST", "/api/auth/"+(mode==="signup"?"signup":"login"), payload);
-      state.me=res.user; enterApp();
+      if(mode==="signup") await api("POST","/api/auth/signup",{name,email,password});
+      else await api("POST","/api/auth/login",{email,password});
+      enterApp(); await loadBoard(); openSSE();
     }catch(err){ showErr(err.message); }
-    finally{ btn.disabled=false; }
   });
-
-  /* ---------- boot ---------- */
-  async function boot(){
-    try{ const r=await api("GET","/api/me"); state.me=r.user; enterApp(); }
-    catch(err){ showAuth(); }
-  }
-
-  function enterApp(){
-    $("#authScreen").hidden=true; $("#app").hidden=false;
-    startClocks(); initFocus();
-    loadBoard();
-    connectSSE();
-    startDust();
-  }
-  function teardownApp(){
-    if(es){ es.close(); es=null; }
-    stopFocusTick(); stopClocks();
-  }
-
-  /* ---------- SSE live sync ---------- */
-  function connectSSE(){
-    if(es) es.close();
-    try{
-      es=new EventSource("/api/events");
-      es.onmessage=()=>scheduleLoad();
-      es.addEventListener("nudge",e=>{ try{ handleNudge(JSON.parse(e.data)); }catch(_){} });
-      es.onerror=()=>{/* browser auto-retries */};
-    }catch(e){}
-  }
-  /* someone tossed/high-fived/poked/passed-a-chore at me */
-  function handleNudge(p){
-    const who=esc(p.fromName||"Someone");
-    let msg;
-    if(p.kind==="chore") msg=`${p.emoji||"🤢"} ${who} passed you a chore: ${esc(p.text||"a task")}`;
-    else if(p.kind==="highfive") msg=`🙌 ${who} high-fived you!`;
-    else if(p.kind==="poke") msg=`👈 ${who} poked you!`;
-    else msg=`${p.emoji||"💩"} ${who} tossed ${p.emoji||"💩"} at you!`;
-    toast(msg);
-    flingEmoji(p.emoji||(p.kind==="highfive"?"🙌":p.kind==="poke"?"👈":"🤢"), p.kind==="chore"?5:4);
-  }
-  function flingEmoji(emoji,n){
-    const W=window.innerWidth||800, H=window.innerHeight||600;
-    for(let i=0;i<n;i++){
-      const el=document.createElement("div"); el.className="nudge-fly"; el.textContent=emoji;
-      const startX=Math.random()*W, startY=H+40;
-      el.style.left=startX+"px"; el.style.top=startY+"px";
-      el.style.setProperty("--dx",((Math.random()-0.5)*W*0.6).toFixed(0)+"px");
-      el.style.setProperty("--dy",(-(H*0.55)-Math.random()*H*0.3).toFixed(0)+"px");
-      el.style.setProperty("--rot",((Math.random()-0.5)*720).toFixed(0)+"deg");
-      el.style.animation=`flyacross ${(1.1+Math.random()*0.7).toFixed(2)}s cubic-bezier(.3,.7,.4,1) forwards`;
-      el.style.animationDelay=(i*0.08)+"s";
-      document.body.appendChild(el);
-      setTimeout(()=>el.remove(),2400);
-    }
-  }
-  function sendNudge(toUserId,kind,emoji){ api("POST","/api/nudge",{toUserId,kind,emoji}).catch(()=>{}); }
-  function scheduleLoad(){ clearTimeout(loadTimer); loadTimer=setTimeout(loadBoard,150); }
-
-  async function loadBoard(){
-    try{
-      const d=await api("GET","/api/board");
-      state.me=d.me; state.columns=d.columns; state.recurring=d.recurring||[]; state.goals=d.goals||[]; state.users=d.users; state.adminId=d.adminId;
-      renderProfile(); renderGoals(); renderBoard(); syncDust();
-    }catch(err){ if(err.status===401) showAuth(); }
-  }
-
-  /* ---------- world clocks ---------- */
-  const CITIES=[{name:"McLean HQ",tz:"America/New_York"},{name:"London",tz:"Europe/London"},{name:"Dubai",tz:"Asia/Dubai"},{name:"Riyadh",tz:"Asia/Riyadh"},{name:"Egypt",tz:"Africa/Cairo"}];
-  let clockInt=null;
-  function offsetLabel(tz){ try{ const p=new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"shortOffset"}).formatToParts(new Date()); const o=p.find(x=>x.type==="timeZoneName"); return o?o.value.replace("GMT","UTC"):""; }catch(e){ return ""; } }
-  function startClocks(){
-    $("#clocks").innerHTML=CITIES.map((c,i)=>`<div class="clock"><div class="city"><span>${c.name}</span><em>${offsetLabel(c.tz)}</em></div><div class="time" id="clk${i}">--:--</div></div>`).join("");
-    tickClocks(); clockInt=setInterval(tickClocks,1000);
-  }
-  function stopClocks(){ clearInterval(clockInt); clockInt=null; }
-  function tickClocks(){
-    CITIES.forEach((c,i)=>{ const el=document.getElementById("clk"+i); if(!el)return;
-      const now=new Date();
-      const hm=new Intl.DateTimeFormat("en-GB",{timeZone:c.tz,hour:"2-digit",minute:"2-digit",hour12:false}).format(now);
-      const ss=new Intl.DateTimeFormat("en-GB",{timeZone:c.tz,second:"2-digit"}).format(now);
-      el.innerHTML=`${hm}<small>:${ss}</small>`;
-    });
-  }
-
-  /* ---------- focus timer (per-device) ---------- */
-  let focus={minutes:25,remaining:1500,running:false}, focusInt=null;
-  function loadFocusPref(){ try{ const m=+localStorage.getItem("hcb-focus-min"); if(m>0){ focus.minutes=m; focus.remaining=m*60; } }catch(e){} }
-  function initFocus(){ loadFocusPref(); renderFocus();
-    $("#focusToggle").onclick=()=> focus.running?stopFocusTick():startFocusTick();
-    $("#focusReset").onclick=()=>{ stopFocusTick(); focus.remaining=focus.minutes*60; renderFocus(); };
-    $("#focusPresets").onclick=e=>{ const b=e.target.closest("button[data-min]"); if(!b)return; stopFocusTick(); focus.minutes=+b.dataset.min; focus.remaining=focus.minutes*60; try{localStorage.setItem("hcb-focus-min",focus.minutes);}catch(e2){} renderFocus(); };
-  }
-  function renderFocus(){ const d=$("#focusDisp"); if(!d)return; d.textContent=fmt(focus.remaining); d.classList.toggle("run",focus.running);
-    $("#focusToggle").textContent=focus.running?"❚❚":"▶";
-    document.querySelectorAll("#focusPresets button").forEach(b=>b.classList.toggle("on",+b.dataset.min===focus.minutes)); }
-  function startFocusTick(){ if(focusInt)return; focus.running=true; renderFocus();
-    focusInt=setInterval(()=>{ if(focus.remaining<=0){ stopFocusTick(); toast("⏱️ Focus block done — take a breather"); return;} focus.remaining--; renderFocus(); },1000); }
-  function stopFocusTick(){ focus.running=false; clearInterval(focusInt); focusInt=null; renderFocus(); }
-
-  /* ---------- goal ---------- */
-  function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }catch(e){ return iso; } }
-  function dueMeta(iso){ if(!iso) return null; const d=new Date(iso+"T00:00:00"); if(isNaN(d)) return null; const today=new Date(); today.setHours(0,0,0,0); const diff=Math.round((d-today)/864e5); return {label:d.toLocaleDateString("en-US",{month:"short",day:"numeric"}),diff}; }
-  function goalPanelHtml(g,single){
-    const chests=(g.rewards||[]).filter(r=>r.label&&r.label.trim()).map(r=>({...r,open:g.pct>=r.pct}));
-    return `<div class="goal">
-      <div class="goal-head"><span class="eyebrow">Road to the goal</span>
-        <button class="btn ghost sm" data-editgoal="${g.id}" style="margin-left:auto">Edit</button></div>
-      <div class="gtitle"><h2>${esc(g.title||"Goal")}</h2>
-        <span class="meta"><b>${g.done}</b> of <b>${g.total}</b> linked tasks done · <b>${g.total-g.done}</b> to go</span></div>
-      <div class="track">
-        <div class="rail"><i style="width:${g.pct}%"></i></div>
-        ${chests.map(c=>`<div class="chest ${c.open?"open":""}" style="left:${c.pct}%" title="${esc(c.label)} · ${c.pct}%">${c.open?"🎁":"🔒"}</div>`).join("")}
-        <div class="runner" style="left:${g.pct}%"><div class="bub">${esc(g.team_emoji||"🛎️")}</div><span class="cap">us</span></div>
-        <div class="finish">${esc(g.finish_emoji||"🏆")}</div>
-        <div class="dates"><span>${fmtDate(g.start)}</span><span>${fmtDate(g.deadline)}</span></div>
-      </div>
-      <div class="rewards">${chests.length?chests.map(c=>`<span class="reward ${c.open?"open":""}"><span class="pct">${c.open?"🎁":"🔒"} ${c.pct}%</span> · ${esc(c.label)}</span>`).join(""):`<span class="reward">No reward chests yet — add some when you edit the goal</span>`}</div>
-    </div>`;
-  }
-  function renderGoals(){
-    const el=$("#goalWrap"), goals=state.goals||[];
-    if(goals.length===0){
-      el.innerHTML=`<div class="goal"><div class="goal-head"><span class="eyebrow">Road to the goal</span></div>
-        <div class="goal-empty"><h2>Set a shared goal</h2>
-        <p>Give the crew a goal with a deadline. Your team marker travels the timeline toward the finish as linked tasks get closed — and reward chests unlock along the way. You can run several goals at once.</p>
-        <button class="btn" data-newgoal>Set a goal</button></div></div>`;
-    } else {
-      el.innerHTML=goals.map(g=>goalPanelHtml(g)).join("")
-        +`<button class="addtask" data-newgoal style="align-self:flex-start">+ Add another goal</button>`;
-    }
-    el.querySelectorAll("[data-newgoal]").forEach(b=>b.onclick=()=>openGoal());
-    el.querySelectorAll("[data-editgoal]").forEach(b=>b.onclick=()=>openGoal(b.dataset.editgoal));
-  }
 
   /* ---------- board ---------- */
-  function userName(id){ const u=state.users.find(x=>x.id===id); return u?u.name:""; }
-  function boardTasks(){ return state.columns.flatMap(c=>c.tasks); }
-  function renderBoard(){
-    const rc=(state.recurring||[]).length;
-    const rcEl=$("#recurCount"); if(rcEl) rcEl.textContent=rc?rc:"";
-    const projCount=new Set(boardTasks().map(t=>(t.project||"").trim()).filter(Boolean)).size;
-    const pcEl=$("#projCount"); if(pcEl) pcEl.textContent=projCount?projCount:"";
-    document.querySelectorAll("#viewTabs button").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
-    const hint=$("#boardHint");
-    if(hint) hint.textContent = view==="recurring" ? "Recurring tasks auto-uncheck when their cycle rolls over"
-      : view==="projects" ? "Your tasks grouped by project • drag a card to another project to re-file it"
-      : "Finishing a task clears its Ugh factor • everyone sees the same board live";
-    if(view==="recurring") renderRecurringBoard();
-    else if(view==="projects") renderProjectsBoard();
-    else renderShiftBoard();
+  async function boot(){
+    try{ const r = await api("GET","/api/me"); state.me=r.user; enterApp(); await loadBoard(); openSSE(); }
+    catch(err){ showAuth(); }
   }
-  function renderProjectsBoard(){
-    const b=$("#board"); b.innerHTML="";
-    const groups=new Map();
-    boardTasks().forEach(t=>{ const name=(t.project||"").trim()||"No project"; if(!groups.has(name)) groups.set(name,[]); groups.get(name).push(t); });
-    const names=[...groups.keys()].filter(n=>n!=="No project").sort((a,b)=>a.localeCompare(b));
-    if(groups.has("No project")) names.push("No project");
-    if(!names.length){
-      b.innerHTML=`<div class="col" style="flex:0 0 320px"><div class="goal-empty" style="padding:6px 4px"><h2 style="font-size:16px;margin-bottom:4px">No projects yet</h2><p style="font-size:12.5px">Open a task, set its <b>Project / area</b>, and it'll show up grouped here.</p></div></div>`;
-      return;
-    }
-    names.forEach(name=>{
-      const list=groups.get(name), done=list.filter(t=>t.done).length;
-      const projVal=name==="No project"?"":name;
-      const el=document.createElement("div"); el.className="col";
-      el.innerHTML=`<div class="col-head" style="cursor:default"><span class="recur-head">📁 ${esc(name)}</span><span class="col-count">${done}/${list.length}</span></div>
-        <div class="cards" data-cards-project="${esc(projVal)}"></div>`;
-      const cards=el.querySelector(".cards"); list.forEach(t=>cards.appendChild(taskCard(t)));
-      b.appendChild(el);
-    });
+  async function loadBoard(){
+    try{
+      const d = await api("GET","/api/board");
+      state.me=d.me; state.stages=d.stages||[]; state.users=d.users||[]; state.adminId=d.adminId;
+      renderTopbar(); renderBoard();
+    }catch(err){ if(err.status===401) showAuth(); }
   }
-  function renderShiftBoard(){
-    const b=$("#board"); b.innerHTML="";
-    state.columns.forEach((col,ci)=>{
-      const done=col.tasks.filter(t=>t.done).length;
-      const el=document.createElement("div"); el.className="col";
-      el.innerHTML=`<div class="col-head">
-          <input value="${esc(col.name)}" data-col="${col.id}" aria-label="List name">
-          <span class="col-count">${done}/${col.tasks.length}</span>
-          <button class="mini" data-mv="l" data-col="${col.id}" title="Move left" ${ci===0?"disabled style=opacity:.3":""}>←</button>
-          <button class="mini" data-mv="r" data-col="${col.id}" title="Move right" ${ci===state.columns.length-1?"disabled style=opacity:.3":""}>→</button>
-          <button class="mini" data-delcol="${col.id}" title="Delete list">✕</button>
-        </div>
-        <div class="cards" data-cards-col="${col.id}"></div>
-        <button class="addtask" data-addtask="${col.id}">+ New task</button>`;
-      const cards=el.querySelector(".cards");
-      col.tasks.forEach(t=>cards.appendChild(taskCard(t)));
-      b.appendChild(el);
-    });
-    const add=document.createElement("button"); add.className="addcol"; add.textContent="+ Add list";
-    add.onclick=()=>mutate(()=>api("POST","/api/columns",{name:"New list"}));
-    b.appendChild(add);
+  function renderTopbar(){
+    const p=state.me; if(!p) return;
+    $("#profName").textContent=p.name;
+    $("#profAv").textContent=initials(p.name);
   }
-  function renderRecurringBoard(){
-    const b=$("#board"); b.innerHTML="";
-    RECUR_META.forEach(rm=>{
-      const list=(state.recurring||[]).filter(t=>t.recur===rm.key);
-      const done=list.filter(t=>t.done).length;
-      const el=document.createElement("div"); el.className="col recur-col";
-      el.innerHTML=`<div class="col-head" style="cursor:default">
-          <span class="recur-head">${rm.ic} ${rm.name}</span>
-          <span class="col-count">${done}/${list.length}</span>
-        </div>
-        <div class="weekly-tag">🔁 ${rm.note}</div>
-        <div class="cards" data-cards-recur="${rm.key}"></div>
-        <button class="addtask" data-addrecur="${rm.key}">+ New ${rm.name.toLowerCase()} task</button>`;
-      const cards=el.querySelector(".cards");
-      list.forEach(t=>cards.appendChild(taskCard(t)));
-      b.appendChild(el);
-    });
+
+  function contractChip(t){
+    if(!t.contractExists) return `<span class="chip c-none">Договір: немає</span>`;
+    return t.contractSigned
+      ? `<span class="chip c-signed">✓ Договір підписано</span>`
+      : `<span class="chip c-unsigned">Договір: не підписано</span>`;
   }
-  document.getElementById("viewTabs").addEventListener("click",e=>{
-    const btn=e.target.closest("button[data-view]"); if(!btn) return;
-    view=btn.dataset.view; try{ localStorage.setItem("hcb-view",view); }catch(e2){}
-    renderBoard();
-  });
-  function initialsOf(name){ return name.trim().split(/\s+/).map(w=>w[0]||"").join("").replace(/[^\p{L}\p{N}]/gu,"").slice(0,2).toUpperCase(); }
-  function taskCard(t){
-    const el=document.createElement("div"); el.className="card"+(t.done?" done":"");
-    el.draggable=true; el.dataset.card=t.id; el.dataset.prio=t.priority||"med";
-    el.title=(t.priority==="high"?"High":t.priority==="low"?"Low":"Medium")+" priority";
-    const who=t.assigneeId?userName(t.assigneeId):"";
-    const dm=dueMeta(t.dueDate);
-    const dueM=dm?`<span class="m-item m-due s-dl ${(!t.done&&dm.diff<0)?"overdue":dm.diff===0?"today":""}" title="Deadline"><span class="ic">📅</span>${dm.diff===0?"Today":esc(dm.label)}</span>`:"";
-    const projM=t.project?`<span class="m-item m-proj s-proj" title="Project: ${esc(t.project)}"><span class="ic">📁</span><span class="t">${esc(t.project)}</span></span>`:"";
-    const firstName=who?who.trim().split(/\s+/)[0]:"";
-    const nameM=who?`<span class="m-item s-name" title="Assigned to ${esc(who)}"><span class="avatar">${esc(initialsOf(who))}</span><span class="t">${esc(firstName)}</span></span>`:"";
-    const metaInner=projM+dueM+recurBadge(t)+nameM;
-    const metaRow=metaInner?`<div class="card-meta">${metaInner}</div>`:"";
-    el.innerHTML=`<div class="card-top">
-        <button class="chk ${t.done?"on":""}" data-done="${t.id}" aria-label="Toggle done">${t.done?"✓":""}</button>
-        <div class="ttl" data-open="${t.id}">${esc(t.title)||"Untitled task"}</div>
-        <div class="dust-ctl">
-          <button data-dust="-1" data-t="${t.id}" aria-label="Less Ugh">−</button>
-          <span class="n" title="Ugh factor">${t.dust}<span class="du">🤢</span></span>
-          <button data-dust="1" data-t="${t.id}" aria-label="More Ugh">+</button>
-        </div></div>
-      ${metaRow}
-      ${(t.reactions&&t.reactions.length)
-        ? `<div class="rx-row">${t.reactions.map(r=>`<span class="rx ${r.mine?"mine":""}" data-react="${t.id}" data-emoji="${r.emoji}">${r.emoji}<span class="c">${r.count}</span></span>`).join("")}<button class="rx-add" data-reactadd="${t.id}" aria-label="Add reaction">＋</button></div>`
-        : `<button class="rx-add rx-add-float" data-reactadd="${t.id}" aria-label="Add reaction">＋</button>`}`;
+  function tenderCard(t){
+    const el=document.createElement("div");
+    el.className="card"; el.draggable=true; el.dataset.id=t.id;
+    const meta=[];
+    meta.push(contractChip(t));
+    if(t.deliveryTerms) meta.push(`<span class="chip deliver" title="Строки поставки">🚚 ${esc(t.deliveryTerms)}</span>`);
+    if(t.packaging) meta.push(`<span class="chip" title="Пакування">📦 ${esc(t.packaging)}</span>`);
+    el.innerHTML =
+      `<div class="buyer">${esc(t.buyer)||"<span style='color:var(--muted-2)'>Без назви покупця</span>"}</div>`
+      + (t.product?`<div class="prod">${esc(t.product)}</div>`:"")
+      + `<div class="card-meta">${meta.join("")}</div>`;
+    el.addEventListener("click", ()=>openTender(t.id));
+    el.addEventListener("dragstart", e=>{ dragId=t.id; el.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; });
+    el.addEventListener("dragend", ()=>{ dragId=null; el.classList.remove("dragging"); });
     return el;
   }
-  const REACTION_EMOJI=["👍","🔥","💩","🙌","😅","❤️","👀","🎉"];
 
-  function findTask(id){ for(const c of state.columns){ const t=c.tasks.find(x=>x.id===id); if(t) return t; } return (state.recurring||[]).find(x=>x.id===id)||null; }
+  function matches(t){
+    if(!filter) return true;
+    const q=filter.toLowerCase();
+    return (t.buyer||"").toLowerCase().includes(q) || (t.product||"").toLowerCase().includes(q);
+  }
 
-  /* mutate: optimistic-ish — call API, reload (SSE also reloads for others) */
-  async function mutate(fn){ try{ await fn(); await loadBoard(); }catch(err){ if(err.status===401){ showAuth(); } else toast("⚠️ "+err.message); } }
+  function renderBoard(){
+    const board=$("#board"); board.innerHTML="";
+    if(!state.stages.length){ board.innerHTML=`<div class="empty">Ще немає стадій. Додайте першу кнопкою «+ Стадія».</div>`; return; }
+    state.stages.forEach(s=>{
+      const list=s.tenders.filter(matches);
+      const col=document.createElement("div"); col.className="col"; col.dataset.stage=s.id;
+      col.innerHTML=
+        `<div class="col-head">
+           <span class="nm" data-rename="${s.id}" title="${esc(s.name)}">${esc(s.name)}</span>
+           <span class="cnt">${s.tenders.length}</span>
+           <span class="ca">
+             <button data-mv="left" data-s="${s.id}" title="Ліворуч">‹</button>
+             <button data-mv="right" data-s="${s.id}" title="Праворуч">›</button>
+             <button data-rename="${s.id}" title="Перейменувати">✎</button>
+             <button data-delstage="${s.id}" title="Видалити стадію">🗑</button>
+           </span>
+         </div>
+         <div class="cards" data-cards="${s.id}"></div>
+         <button class="addt" data-addt="${s.id}">+ Додати тендер</button>`;
+      const cards=col.querySelector(".cards");
+      list.forEach(t=>cards.appendChild(tenderCard(t)));
+      if(!list.length) cards.innerHTML=`<div class="empty" style="padding:14px">${filter?"Нічого не знайдено":"Порожньо"}</div>`;
+      wireDrop(col, cards, s.id);
+      board.appendChild(col);
+    });
+  }
 
+  /* ---------- drag & drop ---------- */
+  let dragId=null;
+  function afterElement(container, y){
+    const els=[...container.querySelectorAll(".card:not(.dragging)")];
+    let closest=null, closestOffset=-Infinity;
+    for(const el of els){ const box=el.getBoundingClientRect(); const off=y-box.top-box.height/2;
+      if(off<0 && off>closestOffset){ closestOffset=off; closest=el; } }
+    return closest;
+  }
+  function wireDrop(col, cards, stageId){
+    col.addEventListener("dragover", e=>{ if(!dragId) return; e.preventDefault(); col.classList.add("drag-over"); });
+    col.addEventListener("dragleave", e=>{ if(!col.contains(e.relatedTarget)) col.classList.remove("drag-over"); });
+    col.addEventListener("drop", async e=>{
+      if(!dragId) return; e.preventDefault(); col.classList.remove("drag-over");
+      const after=afterElement(cards, e.clientY);
+      const beforeId=after?after.dataset.id:null;
+      const id=dragId; dragId=null;
+      try{ await api("POST","/api/tenders/"+id+"/move",{stageId, beforeId}); await loadBoard(); }
+      catch(err){ toast("⚠️ "+err.message); }
+    });
+  }
+
+  /* ---------- board actions ---------- */
   $("#board").addEventListener("click", e=>{
     let m;
-    if((m=e.target.closest("[data-done]"))) toggleDone(m.dataset.done);
-    else if((m=e.target.closest("[data-dust]"))) bumpDust(m.dataset.t,+m.dataset.dust);
-    else if((m=e.target.closest("[data-open]"))) openTask(m.dataset.open);
-    else if((m=e.target.closest("[data-addtask]"))) addTask(m.dataset.addtask);
-    else if((m=e.target.closest("[data-mv]"))) mutate(()=>api("POST","/api/columns/"+m.dataset.col+"/move",{dir:m.dataset.mv}));
-    else if((m=e.target.closest("[data-addrecur]"))) addRecurring(m.dataset.addrecur);
-    else if((m=e.target.closest("[data-react]"))) react(m.dataset.react,m.dataset.emoji);
-    else if((m=e.target.closest("[data-reactadd]"))) openReactPop(m,m.dataset.reactadd);
-    else if((m=e.target.closest("[data-delcol]"))) mutate(()=>api("DELETE","/api/columns/"+m.dataset.delcol));
+    if((m=e.target.closest("[data-addt]"))) addTender(m.dataset.addt);
+    else if((m=e.target.closest("[data-mv]"))) moveStage(m.dataset.s, m.dataset.mv);
+    else if((m=e.target.closest("[data-rename]"))) renameStage(m.dataset.rename);
+    else if((m=e.target.closest("[data-delstage]"))) delStage(m.dataset.delstage);
   });
-  function react(taskId,emoji){ mutate(()=>api("POST","/api/tasks/"+taskId+"/react",{emoji})); }
-  function openReactPop(anchor,taskId){
-    closeReactPop();
-    const pop=document.createElement("div"); pop.className="rx-pop"; pop.id="rxPop";
-    pop.innerHTML=REACTION_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join("");
-    document.body.appendChild(pop);
-    const r=anchor.getBoundingClientRect();
-    pop.style.position="fixed";
-    pop.style.left=Math.min(r.left, (window.innerWidth||800)-pop.offsetWidth-12)+"px";
-    pop.style.top=(r.bottom+6)+"px"; pop.style.zIndex=50;
-    pop.onclick=ev=>{ const b=ev.target.closest("button[data-e]"); if(!b) return; closeReactPop(); react(taskId,b.dataset.e); };
-    setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
+  async function addTender(stageId){
+    try{ const r=await api("POST","/api/stages/"+stageId+"/tenders",{}); await loadBoard(); openTender(r.id); }
+    catch(err){ toast("⚠️ "+err.message); }
   }
-  function closeReactPop(){ const p=$("#rxPop"); if(p) p.remove(); document.removeEventListener("mousedown",closeReactPopOutside); }
-  function closeReactPopOutside(ev){ if(!ev.target.closest("#rxPop")) closeReactPop(); }
-  // Pass a chore straight from the crew card: pick one of your open tasks to dump on them.
-  function openPassPicker(anchor,toUserId,toName){
-    closeReactPop();
-    const open=[...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])].filter(t=>!t.done);
-    const meId=state.me&&state.me.id;
-    let list=open.filter(t=>t.assigneeId===meId);      // your own open chores first
-    if(!list.length) list=open;                         // otherwise any open task
-    if(!list.length){ toast("No open chores to pass 🎉"); return; }
-    const pop=document.createElement("div"); pop.className="rx-pop pass-pop"; pop.id="rxPop";
-    pop.innerHTML=`<div class="pass-h">Pass a chore to ${esc(toName||"them")} 🤢</div>`
-      +list.slice(0,10).map(t=>`<button class="pass-item" data-tid="${t.id}">${esc(t.title)||"Untitled task"} <span class="pass-dust">${t.dust}🤢</span></button>`).join("");
-    document.body.appendChild(pop);
-    const r=anchor.getBoundingClientRect();
-    pop.style.position="fixed"; pop.style.zIndex=50;
-    pop.style.left=Math.max(12,Math.min(r.right-pop.offsetWidth, (window.innerWidth||800)-pop.offsetWidth-12))+"px";
-    pop.style.top=(r.bottom+6)+"px";
-    pop.onclick=ev=>{ const b=ev.target.closest("button[data-tid]"); if(!b) return; closeReactPop(); mutate(()=>api("POST","/api/tasks/"+b.dataset.tid+"/pass",{toUserId})); toast("🤢 Chore passed!"); };
-    setTimeout(()=>document.addEventListener("mousedown",closeReactPopOutside),0);
+  async function moveStage(id, dir){ try{ await api("POST","/api/stages/"+id+"/move",{dir}); await loadBoard(); }catch(err){ toast("⚠️ "+err.message); } }
+  async function renameStage(id){
+    const s=state.stages.find(x=>x.id===id); if(!s) return;
+    const name=prompt("Назва стадії:", s.name); if(name==null) return;
+    try{ await api("PATCH","/api/stages/"+id,{name:name.trim()||s.name}); await loadBoard(); }catch(err){ toast("⚠️ "+err.message); }
   }
-  $("#board").addEventListener("change", e=>{
-    const inp=e.target.closest("input[data-col]");
-    if(inp) mutate(()=>api("PATCH","/api/columns/"+inp.dataset.col,{name:inp.value}));
-  });
+  async function delStage(id){
+    const s=state.stages.find(x=>x.id===id); if(!s) return;
+    const n=s.tenders.length;
+    if(!confirm(`Видалити стадію «${s.name}»?`+(n?`\nРазом з нею буде видалено тендерів: ${n}.`:""))) return;
+    try{ await api("DELETE","/api/stages/"+id); await loadBoard(); }catch(err){ toast("⚠️ "+err.message); }
+  }
+  $("#addStage").onclick=async()=>{
+    const name=prompt("Назва нової стадії:"); if(name==null) return;
+    try{ await api("POST","/api/stages",{name:name.trim()||"Нова стадія"}); await loadBoard(); }catch(err){ toast("⚠️ "+err.message); }
+  };
+  $("#search").addEventListener("input", e=>{ filter=e.target.value.trim(); renderBoard(); });
 
-  /* ---------- drag & drop task cards ---------- */
-  let draggingId=null, lastCont=null;
-  const board=$("#board");
-  function cardsIndexAt(cont,y){
-    const cards=[...cont.querySelectorAll(".card:not(.dragging)")];
-    for(let i=0;i<cards.length;i++){ const r=cards[i].getBoundingClientRect(); if(y < r.top + r.height/2) return i; }
-    return cards.length;
-  }
-  function showDropLine(cont,idx){
-    let line=document.getElementById("dropLine");
-    if(!line){ line=document.createElement("div"); line.id="dropLine"; line.className="drop-line"; }
-    const cards=[...cont.querySelectorAll(".card:not(.dragging)")];
-    if(idx>=cards.length) cont.appendChild(line); else cont.insertBefore(line,cards[idx]);
-  }
-  function removeDropLine(){ const l=document.getElementById("dropLine"); if(l) l.remove(); }
-  function cleanupDrag(){ const d=board.querySelector(".card.dragging"); if(d) d.classList.remove("dragging"); removeDropLine(); draggingId=null; lastCont=null; }
-  board.addEventListener("dragstart", e=>{
-    const c=e.target.closest("[data-card]"); if(!c) return;
-    draggingId=c.dataset.card; setTimeout(()=>c.classList.add("dragging"),0);
-    try{ e.dataTransfer.setData("text/plain",draggingId); e.dataTransfer.effectAllowed="move"; }catch(_){}
-  });
-  board.addEventListener("dragover", e=>{
-    if(!draggingId) return;
-    const cont=e.target.closest(".cards"); if(!cont) return;
-    e.preventDefault(); try{ e.dataTransfer.dropEffect="move"; }catch(_){}
-    lastCont=cont; showDropLine(cont, cardsIndexAt(cont,e.clientY));
-  });
-  board.addEventListener("drop", e=>{
-    if(!draggingId) return;
-    const cont=e.target.closest(".cards")||lastCont; const id=draggingId;
-    if(!cont){ cleanupDrag(); return; }
-    e.preventDefault();
-    const idx=cardsIndexAt(cont,e.clientY);
-    cleanupDrag();
-    if(cont.dataset.cardsCol){
-      mutate(()=>api("POST","/api/tasks/"+id+"/move",{columnId:cont.dataset.cardsCol,index:idx}));
-    } else if(cont.dataset.cardsRecur){
-      const t=findTask(id);
-      if(t && t.recur!==cont.dataset.cardsRecur) mutate(()=>api("PATCH","/api/tasks/"+id,{recur:cont.dataset.cardsRecur}));
-    } else if("cardsProject" in cont.dataset){
-      const t=findTask(id), np=cont.dataset.cardsProject;
-      if(t && (t.project||"")!==np) mutate(()=>api("PATCH","/api/tasks/"+id,{project:np}));
-    }
-  });
-  board.addEventListener("dragend", cleanupDrag);
-
-  async function toggleDone(id){
-    const t=findTask(id); if(!t) return;
-    try{
-      const r=await api("POST","/api/tasks/"+id+"/toggle");
-      if(r.done){ mascotSay(SWEEP_LINES[Math.floor(Math.random()*SWEEP_LINES.length)]); sweepCelebrate(); }
-      if(r.unlocked&&r.unlocked.length) toast(`🏅 Achievement: ${r.unlocked[0].name}`);
-      await loadBoard();
-    }catch(err){ if(err.status===401) showAuth(); else toast("⚠️ "+err.message); }
-  }
-  function bumpDust(id,d){ const t=findTask(id); if(!t)return; const nd=Math.max(0,t.dust+d);
-    mutate(()=>api("PATCH","/api/tasks/"+id,{dust:nd})); }
-  function addTask(colId){ mutate(async()=>{ const r=await api("POST","/api/columns/"+colId+"/tasks"); pendingOpen=r.id; }); }
-  function addRecurring(recur){ mutate(async()=>{ const r=await api("POST","/api/recurring",{recur}); pendingOpen=r.id; }); }
-  let pendingOpen=null;
-  const _loadBoard=loadBoard;
-  loadBoard=async function(){ await _loadBoard(); if(pendingOpen){ const id=pendingOpen; pendingOpen=null; openTask(id,true); } };
-
-  /* ---------- task editor ---------- */
-  function openTask(id,isNew){
-    const t=findTask(id); if(!t) return;
-    const goalOpts = (state.goals||[]).map(g=>`<option value="${g.id}" ${t.goalId===g.id?"selected":""}>${esc(g.title)}</option>`).join("");
-    const teamOpts = `<option value="">Unassigned</option>`+state.users.map(u=>`<option value="${u.id}" ${t.assigneeId===u.id?"selected":""}>${esc(u.name)}</option>`).join("");
-    const otherOpts = state.users.filter(u=>u.id!==(state.me&&state.me.id)).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("");
-    openSheet(`<div class="sheet wide" role="dialog" aria-modal="true" aria-label="Task">
-      <div class="sheet-head"><h2>${isNew?"New task":"Task"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  /* ---------- tender editor ---------- */
+  function findTender(id){ for(const s of state.stages){ const t=s.tenders.find(x=>x.id===id); if(t) return t; } return null; }
+  function openTender(id){
+    const t=findTender(id); if(!t) return;
+    const stageOpts=state.stages.map(s=>`<option value="${s.id}" ${s.id===t.stageId?"selected":""}>${esc(s.name)}</option>`).join("");
+    openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Тендер">
+      <div class="sheet-head"><h2>Картка тендера</h2><button class="x" data-close aria-label="Закрити">✕</button></div>
       <div class="sheet-body">
-        <div class="field"><label for="tTitle">Title</label><input class="in" id="tTitle" value="${esc(t.title)}" placeholder="What needs doing?"></div>
-        <div class="field"><label for="tDesc">Notes</label><textarea class="in" id="tDesc" placeholder="Details, steps, links…">${esc(t.notes)}</textarea></div>
+        <div class="field"><label for="fBuyer">Найменування покупця</label><input class="in" id="fBuyer" value="${esc(t.buyer)}" placeholder="Напр. КП «Міська лікарня №4»"></div>
         <div class="row2">
-          <div class="field"><label>Priority</label><div class="seg" id="tPrio">
-            <button data-v="low" class="${t.priority==="low"?"on":""}">Low</button>
-            <button data-v="med" class="${t.priority==="med"?"on":""}">Medium</button>
-            <button data-v="high" class="${t.priority==="high"?"on":""}">High</button></div></div>
-          <div class="field"><label for="tDue">Due date</label><input class="in" id="tDue" type="date" value="${esc(t.dueDate||'')}"></div>
+          <div class="field"><label for="fProduct">Найменування товару</label><input class="in" id="fProduct" value="${esc(t.product)}"></div>
+          <div class="field"><label for="fStage">Стадія</label><select class="in" id="fStage">${stageOpts}</select></div>
         </div>
         <div class="row2">
-          <div class="field"><label for="tProj">Project / area</label><input class="in" id="tProj" value="${esc(t.project)}" placeholder="e.g. Housekeeping"></div>
-          <div class="field"><label for="tWho">Assignee</label><select class="in" id="tWho">${teamOpts}</select></div>
+          <div class="field"><label for="fPack">Пакування</label><input class="in" id="fPack" value="${esc(t.packaging)}" placeholder="Напр. 100 шт/уп, 10 уп/кор"></div>
+          <div class="field"><label for="fDeliv">Строки поставки</label><input class="in" id="fDeliv" value="${esc(t.deliveryTerms)}" placeholder="Напр. до 15 днів"></div>
         </div>
-        ${otherOpts?`<div class="field"><label>Pass this chore <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— reassign it and dump the 🤢 on a teammate (they get pinged)</span></label>
-          <div style="display:flex;gap:8px"><select class="in" id="tPassTo"><option value="">Pick a teammate…</option>${otherOpts}</select>
-          <button class="btn ghost sm" id="tPass" type="button" style="white-space:nowrap">Pass 🤢</button></div></div>`:""}
-        <div class="field"><label>Repeat <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— it auto-unchecks each cycle</span></label>
-          <div class="seg" id="tRecur">
-            <button data-v="" class="${!t.recur?"on":""}">Doesn't repeat</button>
-            <button data-v="day" class="${t.recur==="day"?"on":""}">Daily</button>
-            <button data-v="week" class="${t.recur==="week"?"on":""}">Weekly</button>
-            <button data-v="month" class="${t.recur==="month"?"on":""}">Monthly</button>
-            <button data-v="quarter" class="${t.recur==="quarter"?"on":""}">Quarterly</button>
-          </div>
-          <div id="tAnchorWrap" style="margin-top:8px" hidden>
-            <label id="tAnchorLabel" style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;display:block;margin-bottom:5px">On</label>
-            <select class="in" id="tAnchor" style="max-width:240px"></select>
-          </div>
+        <div class="field"><label for="fSpec">Специфікація</label><textarea class="in" id="fSpec" placeholder="ДСТУ, матеріал, характеристики…">${esc(t.specification)}</textarea></div>
+
+        <div class="section-cap">Договір</div>
+        <div class="row2">
+          <div class="field"><label>Договір</label><div class="seg" id="segExists">
+            <button type="button" data-v="1" class="${t.contractExists?"on":""}">Є</button>
+            <button type="button" data-v="0" class="${!t.contractExists?"on":""}">Немає</button></div></div>
+          <div class="field"><label>Статус підпису</label><div class="seg green" id="segSigned">
+            <button type="button" data-v="1" class="${t.contractSigned?"on":""}">Підписаний</button>
+            <button type="button" data-v="0" class="${!t.contractSigned?"on":""}">Не підписаний</button></div></div>
         </div>
-        <div class="field"><label for="tGoal">Counts toward goal</label><select class="in" id="tGoal"><option value="">— none —</option>${goalOpts}</select></div>
-        <div class="dustbox"><div class="hd">🤢 Ugh factor <span style="color:var(--muted-2);text-transform:none;letter-spacing:0;font-weight:500">— how much of a grind this is</span></div>
-          <div class="dustrow"><button id="tDustDown" aria-label="Less">−</button><span class="big" id="tDustN">${t.dust}</span><button id="tDustUp" aria-label="More">+</button></div>
-          <p>The Ugh factor piles up at the bottom of the board. Finish the task and it gets swept away.</p></div>
-        <div class="timerbox"><div class="hd">⏱️ Task timer</div>
-          <div class="tdisp" id="tTime">${fmt(taskTimer.id===t.id?taskTimer.rem:0)}</div>
-          <div class="tctl"><input class="in" id="tMin" type="number" min="1" placeholder="minutes" style="max-width:120px">
-            <button class="btn ghost sm" id="tSet">Set</button>
-            <button class="btn sm" id="tStart">${taskTimer.id===t.id&&taskTimer.run?"Pause":"Start"}</button>
-            <button class="btn ghost sm" id="tReset">Reset</button></div></div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
-          <button class="btn danger sm" id="tDel">Delete task</button>
-          <button class="btn" id="tSave" style="margin-left:auto">Save task</button></div>
+
+        <div class="section-cap">Реквізити</div>
+        <div class="field"><label for="fReqS">Реквізити для відправки зразка</label><textarea class="in" id="fReqS">${esc(t.reqSample)}</textarea></div>
+        <div class="field"><label for="fReqO">Реквізити для відправки замовлення</label><textarea class="in" id="fReqO">${esc(t.reqOrder)}</textarea></div>
+        <div class="field"><label for="fReqD">Реквізити для відправки документів</label><textarea class="in" id="fReqD">${esc(t.reqDocs)}</textarea></div>
+
+        <div class="section-cap">Інше</div>
+        <div class="field"><label for="fNotes">Нотатки</label><textarea class="in" id="fNotes">${esc(t.notes)}</textarea></div>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn danger sm" id="fDelete">Видалити</button>
+        <span class="hint" id="fSaved"></span>
+        <span style="flex:1"></span>
+        <button class="btn ghost sm" data-close>Закрити</button>
+        <button class="btn" id="fSave">Зберегти</button>
       </div></div>`);
 
-    let prio=t.priority;
-    $("#tPrio").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; document.querySelectorAll("#tPrio button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); prio=b.dataset.v; };
-    let recur=t.recur||"", anchor=(t.recurAnchor==null?null:t.recurAnchor);
-    function anchorOptions(r,cur){
-      if(r==="week") return WEEKDAYS.map((d,i)=>`<option value="${i}" ${cur==i?"selected":""}>${d}</option>`).join("");
-      let o=`<option value="0" ${cur===0?"selected":""}>Last day</option>`;
-      for(let d=1;d<=31;d++) o+=`<option value="${d}" ${cur==d?"selected":""}>${ordinal(d)}</option>`;
-      return o;
-    }
-    function updateAnchorUI(){
-      const wrap=$("#tAnchorWrap"), sel=$("#tAnchor"), lbl=$("#tAnchorLabel");
-      if(recur==="week"||recur==="month"||recur==="quarter"){
-        let cur=anchor; if(cur==null) cur = recur==="week" ? ((new Date().getDay()+6)%7) : 1;
-        lbl.textContent = recur==="week" ? "On which weekday" : recur==="quarter" ? "Day of the quarter's first month" : "Day of the month";
-        sel.innerHTML=anchorOptions(recur,cur);
-        anchor=parseInt(sel.value,10);
-        wrap.hidden=false;
-      } else { wrap.hidden=true; anchor=null; }
-    }
-    $("#tAnchor").onchange=()=>{ anchor=parseInt($("#tAnchor").value,10); };
-    $("#tRecur").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; recur=b.dataset.v; anchor=null;
-      document.querySelectorAll("#tRecur button").forEach(x=>x.classList.toggle("on",x.dataset.v===recur)); updateAnchorUI(); };
-    updateAnchorUI();
-    const passBtn=$("#tPass"); if(passBtn) passBtn.onclick=()=>{ const to=$("#tPassTo").value; if(!to){ toast("Pick a teammate first"); return; } closeSheet(); mutate(()=>api("POST","/api/tasks/"+t.id+"/pass",{toUserId:to})); toast("🤢 Chore passed!"); };
-    let dust=t.dust; const dn=$("#tDustN");
-    $("#tDustUp").onclick=()=>{ dust++; dn.textContent=dust; };
-    $("#tDustDown").onclick=()=>{ dust=Math.max(0,dust-1); dn.textContent=dust; };
+    let exists=t.contractExists?1:0, signed=t.contractSigned?1:0;
+    $("#segExists").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; exists=+b.dataset.v;
+      document.querySelectorAll("#segExists button").forEach(x=>x.classList.toggle("on",+x.dataset.v===exists)); };
+    $("#segSigned").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; signed=+b.dataset.v;
+      document.querySelectorAll("#segSigned button").forEach(x=>x.classList.toggle("on",+x.dataset.v===signed)); };
 
-    const tTime=$("#tTime");
-    function paintTT(){ tTime.textContent=fmt(taskTimer.id===t.id?taskTimer.rem:0); tTime.classList.toggle("run",taskTimer.id===t.id&&taskTimer.run);
-      const sb=$("#tStart"); if(sb) sb.textContent=(taskTimer.id===t.id&&taskTimer.run)?"Pause":"Start"; }
-    $("#tSet").onclick=()=>{ const m=+$("#tMin").value; if(m>0){ stopTT(); taskTimer={id:t.id,rem:m*60,run:false}; paintTT(); } };
-    $("#tStart").onclick=()=>{ if(taskTimer.id!==t.id||taskTimer.rem<=0){ const m=+$("#tMin").value||25; taskTimer={id:t.id,rem:m*60,run:false}; }
-      if(taskTimer.run){ stopTT(); } else { taskTimer.run=true; taskTimerInt=setInterval(()=>{ if(taskTimer.rem<=0){ stopTT(); toast("⏱️ Task timer done"); return;} taskTimer.rem--; paintTT(); },1000); } paintTT(); };
-    $("#tReset").onclick=()=>{ stopTT(); taskTimer={id:null,rem:0,run:false}; paintTT(); };
-
-    $("#tDel").onclick=()=>{ stopTT(); closeSheet(); mutate(()=>api("DELETE","/api/tasks/"+t.id)); };
-    $("#tSave").onclick=()=>{
-      const body={ title:$("#tTitle").value.trim(), notes:$("#tDesc").value, priority:prio, dust,
-        dueDate:$("#tDue").value||"", project:$("#tProj").value.trim(),
-        assigneeId:$("#tWho").value||null, goalId:$("#tGoal").value||null, recur, recurAnchor:(recur?anchor:null) };
-      closeSheet(); mutate(()=>api("PATCH","/api/tasks/"+t.id,body));
+    $("#fDelete").onclick=async()=>{
+      if(!confirm("Видалити цей тендер?")) return;
+      try{ await api("DELETE","/api/tenders/"+t.id); closeSheet(); await loadBoard(); toast("Тендер видалено"); }
+      catch(err){ toast("⚠️ "+err.message); }
     };
-    if(isNew) setTimeout(()=>{ const i=$("#tTitle"); if(i) i.focus(); },30);
-  }
-  let taskTimer={id:null,rem:0,run:false}, taskTimerInt=null;
-  function stopTT(){ taskTimer.run=false; clearInterval(taskTimerInt); taskTimerInt=null; }
-
-  /* ---------- goal editor ---------- */
-  const TEAM_MARKERS=["🛎️","🧹","🚐","🏃","🧑‍🤝‍🧑","🚀","🧳","👟","⭐","🧑‍🍳"];
-  const FINISH_MARKERS=["🏆","🏁","🎯","🥇","💎","🎉","⭐","🏅","🎊","🌟"];
-  function openGoal(id){
-    const existing = id ? (state.goals||[]).find(x=>x.id===id) : null;
-    const g = existing || {title:"",start:todayKey(),deadline:addDays(todayKey(),21),team_emoji:"🛎️",finish_emoji:"🏆",rewards:[{label:"",pct:25},{label:"",pct:50},{label:"",pct:75}]};
-    const r=[0,1,2].map(i=>(g.rewards&&g.rewards[i])||{label:"",pct:[25,50,75][i]});
-    let teamEmoji=g.team_emoji, finishEmoji=g.finish_emoji;
-    openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Goal">
-      <div class="sheet-head"><h2>${existing?"Edit goal":"New goal"}</h2><button class="x" data-close aria-label="Close">✕</button></div>
-      <div class="sheet-body">
-        <div class="field"><label for="gTitle">Goal</label><input class="in" id="gTitle" value="${esc(g.title)}" placeholder="e.g. Q4 Guest Satisfaction Push"></div>
-        <div class="row2"><div class="field"><label for="gStart">Start</label><input class="in" id="gStart" type="date" value="${g.start}"></div>
-          <div class="field"><label for="gEnd">Deadline</label><input class="in" id="gEnd" type="date" value="${g.deadline}"></div></div>
-        <div class="row2"><div class="field"><label>Team marker</label><div class="emoji-pick" id="gTeam">${TEAM_MARKERS.map(e=>`<button type="button" data-em="${e}" class="${g.team_emoji===e?"on":""}">${e}</button>`).join("")}</div></div>
-          <div class="field"><label>Finish marker</label><div class="emoji-pick" id="gFin">${FINISH_MARKERS.map(e=>`<button type="button" data-em="${e}" class="${g.finish_emoji===e?"on":""}">${e}</button>`).join("")}</div></div></div>
-        <div class="field"><label>Reward chests along the way</label>
-          <div style="display:flex;flex-direction:column;gap:8px">
-          ${r.map((x,i)=>`<div style="display:flex;gap:8px"><input class="in gR" data-i="${i}" value="${esc(x.label)}" placeholder="Reward (leave blank for no chest)"><input class="in gP" data-i="${i}" type="number" min="1" max="100" value="${x.pct}" style="max-width:88px"> <span style="align-self:center;color:var(--muted)">%</span></div>`).join("")}
-          </div>
-          <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">A chest opens once that % of the goal's linked tasks are done. Link a task to a goal from its "Counts toward goal" field — progress is the share of linked tasks completed.</p></div>
-        <div style="display:flex;gap:10px;margin-top:4px">
-          ${existing?`<button class="btn danger sm" id="gDel">Remove goal</button>`:""}
-          <button class="btn gold" id="gSave" style="margin-left:auto">Save goal</button></div>
-      </div></div>`);
-    $("#gTeam").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; teamEmoji=b.dataset.em;
-      document.querySelectorAll("#gTeam button").forEach(x=>x.classList.toggle("on",x.dataset.em===teamEmoji)); };
-    $("#gFin").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; finishEmoji=b.dataset.em;
-      document.querySelectorAll("#gFin button").forEach(x=>x.classList.toggle("on",x.dataset.em===finishEmoji)); };
-    $("#gSave").onclick=()=>{
-      const rewards=[0,1,2].map(i=>({label:$(`.gR[data-i="${i}"]`).value, pct:+$(`.gP[data-i="${i}"]`).value||((i+1)*25)}));
-      const body={ title:$("#gTitle").value.trim()||"Goal", start:$("#gStart").value, deadline:$("#gEnd").value,
-        teamEmoji, finishEmoji, rewards };
-      closeSheet();
-      mutate(()=> existing ? api("PATCH","/api/goals/"+existing.id,body) : api("POST","/api/goals",body));
+    $("#fSave").onclick=async()=>{
+      const body={
+        buyer:$("#fBuyer").value.trim(), product:$("#fProduct").value.trim(), packaging:$("#fPack").value.trim(),
+        deliveryTerms:$("#fDeliv").value.trim(), specification:$("#fSpec").value, reqSample:$("#fReqS").value,
+        reqOrder:$("#fReqO").value, reqDocs:$("#fReqD").value, notes:$("#fNotes").value,
+        contractExists:!!exists, contractSigned:!!signed
+      };
+      const newStage=$("#fStage").value;
+      try{
+        await api("PATCH","/api/tenders/"+t.id, body);
+        if(newStage && newStage!==t.stageId) await api("POST","/api/tenders/"+t.id+"/move",{stageId:newStage, beforeId:null});
+        closeSheet(); await loadBoard(); toast("Збережено ✓");
+      }catch(err){ toast("⚠️ "+err.message); }
     };
-    const del=$("#gDel"); if(del) del.onclick=()=>{ closeSheet(); mutate(()=>api("DELETE","/api/goals/"+existing.id)); };
   }
-  function todayKey(){ return new Date().toISOString().slice(0,10); }
-  function addDays(iso,n){ const d=new Date(iso); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
   /* ---------- profile ---------- */
-  const AV_EMOJI=["🧹","💎","🔑","🛎️","🌙","🔥","⭐","🏆","☕","🧳","🗝️","🛏️","🧺","✨","🚪","📋","🧑‍🍳","🥂","🌅","🧠","💪","🦢"];
-  function achievements(me){ const s=me.stats||{}; return [
-    {id:"first",ic:"🛎️",name:"First check-in",desc:"Close your first task",on:s.closed>=1},
-    {id:"ten",ic:"🔟",name:"On a roll",desc:"Close 10 tasks",on:s.closed>=10},
-    {id:"fifty",ic:"🧽",name:"Housekeeping hero",desc:"Close 50 tasks",on:s.closed>=50},
-    {id:"hundred",ic:"💎",name:"Diamond status",desc:"Close 100 tasks",on:s.closed>=100},
-    {id:"deep",ic:"⛰️",name:"Deep clean",desc:"Finish a task worth 10+ Ugh",on:!!s.deepClean},
-    {id:"spot",ic:"✨",name:"Spotless",desc:"Clear 50 Ugh total",on:s.sweptDust>=50},
-    {id:"early",ic:"🌅",name:"Early check-in",desc:"Finish a task 5–8 AM",on:!!s.early},
-    {id:"night",ic:"🌙",name:"Night auditor",desc:"Finish a task midnight–5 AM",on:!!s.night},
-    {id:"fire",ic:"🔥",name:"Week on fire",desc:"Hit a 7-day streak",on:(me.streakDays||0)>=7}
-  ]; }
-
+  $("#profBtn").onclick=openProfile;
   function openProfile(){
-    const p=state.me;
-    let emojis=p.emojis.slice(0,3);
-    const bars=Array.from({length:7},(_,i)=>`<div class="sb ${i<Math.min(7,p.streakDays)?"on":""}"></div>`).join("");
-    const ems=AV_EMOJI.map(e=>`<button data-em="${e}" class="${emojis.includes(e)?"on":""}">${e}</button>`).join("");
-    const achs=achievements(p).map(a=>`<div class="ach ${a.on?"on":""}"><span class="ic">${a.ic}</span><span class="an">${a.name}</span><span class="ad">${a.desc}</span></div>`).join("");
-    const crewRow=u=>{
+    const p=state.me; const isAdmin=p.id===state.adminId;
+    const others=state.users;
+    const crew=others.map(u=>{
       const me=u.id===p.id;
-      const actions=me
-        ? `<span class="shiftdot">${u.shift==="night"?"🌙":"☀️"}</span>`
-        : `<span class="crew-actions"><button data-hi="${u.id}" title="High-five">🙌</button><button data-poke="${u.id}" title="Poke">👈</button><button data-pass="${u.id}" data-name="${esc(u.name)}" title="Pass a chore">🤢</button>${p.id===state.adminId?`<button data-reset="${u.id}" data-name="${esc(u.name)}" title="Reset password">🔑</button>`:""}</span>`;
-      return `<div class="row"><span class="av">${esc((u.emojis||["🧹"]).slice(0,2).join(""))}</span>`
-        +`<span><span class="nm">${esc(u.name)}${me?" (you)":""}</span>${u.status?`<span class="st"> · ${esc(u.status)}</span>`:""}`
-        +`${u.chores?`<span class="toss-n">· ${u.chores}🤢 caught</span>`:""}</span>`
-        +`${u.streakDays?`<span class="fire">${u.streakDays}🔥</span>`:""}${actions}</div>`;
-    };
-    const dayCrew=state.users.filter(u=>u.shift!=="night");
-    const nightCrew=state.users.filter(u=>u.shift==="night");
-    const crew=`${dayCrew.length?`<div class="crew-sub">☀️ Day shift (${dayCrew.length})</div>`+dayCrew.map(crewRow).join(""):""}`
-             +`${nightCrew.length?`<div class="crew-sub">🌙 Night shift (${nightCrew.length})</div>`+nightCrew.map(crewRow).join(""):""}`;
-    openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Profile">
-      <div class="sheet-head"><h2>Your crew card</h2><button class="btn ghost sm" id="pLogout">Log out</button><button class="x" data-close aria-label="Close">✕</button></div>
+      const reset=(isAdmin&&!me)?`<button class="btn ghost sm" data-reset="${u.id}" data-name="${esc(u.name)}">🔑 Скинути пароль</button>`:"";
+      const tag=u.id===state.adminId?`<span class="tag">адмін</span>`:"";
+      return `<div class="crew-row"><span class="av" style="width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-bright);display:grid;place-items:center;font-weight:800;font-size:12px">${esc(initials(u.name))}</span>
+        <span class="nm">${esc(u.name)}${me?" (ви)":""} ${tag}<div class="tag">${esc(u.email)}</div></span>${reset}</div>`;
+    }).join("");
+    openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Профіль">
+      <div class="sheet-head"><h2>Профіль</h2><button class="btn ghost sm" id="pLogout">Вийти</button><button class="x" data-close aria-label="Закрити">✕</button></div>
       <div class="sheet-body">
-        <div class="field"><label for="pName">Name on the board</label><input class="in" id="pName" value="${esc(p.name)}" placeholder="How the crew sees you"></div>
+        <div class="field"><label for="pName">Ваше ім'я</label><input class="in" id="pName" value="${esc(p.name)}"></div>
+        <div style="display:flex;gap:10px"><button class="btn sm" id="pSaveName">Зберегти ім'я</button></div>
+
+        <div class="section-cap">Зміна паролю</div>
+        <div class="field"><label for="pwCur">Поточний пароль</label><input class="in" id="pwCur" type="password" autocomplete="current-password"></div>
         <div class="row2">
-          <div class="field"><label for="pStatus">Status</label><input class="in" id="pStatus" value="${esc(p.status)}" placeholder="e.g. Front desk"></div>
-          <div class="field"><label>Shift</label><div class="seg" id="pShift">
-            <button type="button" data-v="day" class="${p.shift!=="night"?"on":""}">☀️ Day</button>
-            <button type="button" data-v="night" class="${p.shift==="night"?"on":""}">🌙 Night</button></div></div>
+          <div class="field"><label for="pwNew">Новий пароль</label><input class="in" id="pwNew" type="password" autocomplete="new-password" placeholder="Мін. 8 символів"></div>
+          <div class="field"><label for="pwNew2">Повторіть</label><input class="in" id="pwNew2" type="password" autocomplete="new-password"></div>
         </div>
-        <div class="field"><label>Shift streak</label><div class="streakbars">${bars}</div>
-          <p style="color:var(--muted-2);font-size:11.5px;margin:4px 0 0">🔥 <b style="color:var(--fg)">${p.streakDays} day${p.streakDays===1?"":"s"}</b> in a row with a task closed.${p.paused?" Paused — your streak is safe.":""}</p></div>
-        <div class="field"><label>Avatar emoji <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— pick up to 3</span></label><div class="emoji-grid" id="emGrid">${ems}</div></div>
-        <label class="chkline"><span class="box ${p.showStreak?"on":""}" id="cShow">${p.showStreak?"✓":""}</span><span>Show my streak on the board<small>Others see your 🔥 count next to your name</small></span></label>
-        <label class="chkline"><span class="box ${p.paused?"on":""}" id="cPause">${p.paused?"✓":""}</span><span>Pause: on leave or sick<small>Your streak won't reset while this is on</small></span></label>
-        <div class="section-cap">Change password</div>
-        <div class="field"><label for="pwCur">Current password</label><input class="in" id="pwCur" type="password" autocomplete="current-password" placeholder="Current password"></div>
-        <div class="row2">
-          <div class="field"><label for="pwNew">New password</label><input class="in" id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
-          <div class="field"><label for="pwNew2">Confirm new</label><input class="in" id="pwNew2" type="password" autocomplete="new-password" placeholder="Repeat it"></div>
-        </div>
-        <div id="pwMsg" style="display:none;font-size:12px;margin:2px 0 0"></div>
-        <button class="btn ghost sm" id="pwSave" type="button" style="margin-top:4px">Update password</button>
-        <div class="section-cap">My achievements</div><div class="ach-grid">${achs}</div>
-        <div class="section-cap">Crew (${state.users.length})</div><div class="crew" id="crewList">${crew}</div>
-        <button class="btn" id="pSave" style="margin-top:6px">Save card</button>
+        <div id="pwMsg" style="display:none;font-size:12px"></div>
+        <div><button class="btn ghost sm" id="pwSave">Оновити пароль</button></div>
+
+        <div class="section-cap">Користувачі (${others.length})</div>
+        ${crew||`<div class="hint">Поки лише ви.</div>`}
+        ${isAdmin?"":`<div class="hint" style="margin-top:8px">Скидати паролі може лише адміністратор.</div>`}
       </div></div>`);
-    let showStreak=p.showStreak, paused=p.paused, shift=p.shift==="night"?"night":"day";
-    $("#pShift").onclick=e=>{ const b=e.target.closest("button[data-v]"); if(!b)return; shift=b.dataset.v;
-      document.querySelectorAll("#pShift button").forEach(x=>x.classList.toggle("on",x.dataset.v===shift)); };
-    $("#emGrid").onclick=e=>{ const b=e.target.closest("button[data-em]"); if(!b)return; const em=b.dataset.em; const i=emojis.indexOf(em);
-      if(i>=0) emojis.splice(i,1); else { if(emojis.length>=3) emojis.shift(); emojis.push(em); }
-      document.querySelectorAll("#emGrid button").forEach(x=>x.classList.toggle("on",emojis.includes(x.dataset.em))); };
-    $("#cShow").parentElement.onclick=()=>{ showStreak=!showStreak; $("#cShow").classList.toggle("on",showStreak); $("#cShow").textContent=showStreak?"✓":""; };
-    $("#cPause").parentElement.onclick=()=>{ paused=!paused; $("#cPause").classList.toggle("on",paused); $("#cPause").textContent=paused?"✓":""; };
-    const crewEl=$("#crewList");
-    if(crewEl) crewEl.onclick=e=>{
-      let m;
-      if((m=e.target.closest("[data-hi]"))){ sendNudge(m.dataset.hi,"highfive"); toast("🙌 High-five sent"); }
-      else if((m=e.target.closest("[data-poke]"))){ sendNudge(m.dataset.poke,"poke"); toast("👈 Poke sent"); }
-      else if((m=e.target.closest("[data-pass]"))){ openPassPicker(m,m.dataset.pass,m.dataset.name); }
-      else if((m=e.target.closest("[data-reset]"))){ resetTeammatePw(m.dataset.reset, m.dataset.name); }
-    };
+
     $("#pLogout").onclick=async()=>{ try{ await api("POST","/api/auth/logout"); }catch(e){} state.me=null; closeSheet(); showAuth(); };
-    $("#pSave").onclick=async()=>{
-      const body={ name:$("#pName").value.trim()||p.name, status:$("#pStatus").value.trim(), emojis, showStreak, paused, shift };
-      closeSheet();
-      try{ const r=await api("PATCH","/api/me",body); state.me=r.user; renderProfile(); await loadBoard(); }
+    $("#pSaveName").onclick=async()=>{
+      const name=$("#pName").value.trim(); if(!name) return;
+      try{ const r=await api("PATCH","/api/me",{name}); state.me=r.user; renderTopbar(); toast("Збережено ✓"); }
       catch(err){ toast("⚠️ "+err.message); }
     };
     const pwSave=$("#pwSave");
-    if(pwSave) pwSave.onclick=async()=>{
+    pwSave.onclick=async()=>{
       const msg=$("#pwMsg"), cur=$("#pwCur").value, nw=$("#pwNew").value, nw2=$("#pwNew2").value;
-      const show=(text,ok)=>{ msg.style.display="block"; msg.style.color=ok?"var(--good,#49c17a)":"#ff8f78"; msg.textContent=text; };
-      if(!cur||!nw){ show("Fill in your current and new password.",false); return; }
-      if(nw.length<8){ show("New password must be at least 8 characters.",false); return; }
-      if(nw!==nw2){ show("New passwords don't match.",false); return; }
+      const show=(t,ok)=>{ msg.style.display="block"; msg.style.color=ok?"var(--good)":"var(--bad)"; msg.textContent=t; };
+      if(!cur||!nw){ show("Заповніть поточний і новий пароль.",false); return; }
+      if(nw.length<8){ show("Новий пароль має містити щонайменше 8 символів.",false); return; }
+      if(nw!==nw2){ show("Нові паролі не збігаються.",false); return; }
       pwSave.disabled=true;
-      try{ await api("POST","/api/me/password",{current:cur,next:nw}); show("Password updated ✓",true);
+      try{ await api("POST","/api/me/password",{current:cur,next:nw}); show("Пароль оновлено ✓",true);
         $("#pwCur").value=$("#pwNew").value=$("#pwNew2").value=""; }
       catch(err){ show("⚠️ "+err.message,false); }
       finally{ pwSave.disabled=false; }
     };
+    const body=$("#scrim");
+    body.addEventListener("click", onCrewClick);
+    function onCrewClick(e){ const m=e.target.closest("[data-reset]"); if(m) resetTeammatePw(m.dataset.reset, m.dataset.name); }
   }
-  $("#profBtn").onclick=openProfile;
-
   async function resetTeammatePw(id, name){
-    if(!confirm(`Reset ${name||"this teammate"}'s password?\nYou'll get a temporary password to give them.`)) return;
+    if(!confirm(`Скинути пароль для «${name||"цього користувача"}»?\nВи отримаєте тимчасовий пароль, щоб передати йому.`)) return;
     try{
       const r=await api("POST","/api/users/"+id+"/reset-password",{});
-      openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Password reset">
-        <div class="sheet-head"><h2>Temporary password</h2><button class="x" data-close aria-label="Close">✕</button></div>
+      openSheet(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Тимчасовий пароль">
+        <div class="sheet-head"><h2>Тимчасовий пароль</h2><button class="x" data-close aria-label="Закрити">✕</button></div>
         <div class="sheet-body">
-          <p style="color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5">Give <b style="color:var(--fg)">${esc(r.name||name||"them")}</b> this temporary password. They sign in with it, then set their own from their profile → Change password.</p>
-          <div class="field"><label>Temporary password</label><input class="in" id="tmpPw" readonly value="${esc(r.tempPassword)}" style="font-family:var(--font-mono);font-weight:700;letter-spacing:.5px"></div>
-          <button class="btn" id="tmpCopy" type="button" style="margin-top:4px">Copy</button>
+          <p class="hint" style="line-height:1.5">Передайте <b style="color:var(--fg)">${esc(r.name||name||"користувачу")}</b> цей тимчасовий пароль. Він увійде з ним, а потім задасть власний у профілі → Зміна паролю.</p>
+          <div class="field"><label>Тимчасовий пароль</label><input class="in" id="tmpPw" readonly value="${esc(r.tempPassword)}" style="font-family:var(--font-mono);font-weight:700;letter-spacing:.5px"></div>
+          <div><button class="btn" id="tmpCopy">Копіювати</button></div>
         </div></div>`);
       const inp=$("#tmpPw"); if(inp) inp.onclick=()=>inp.select();
-      const cp=$("#tmpCopy"); if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(r.tempPassword); toast("Copied ✓"); }catch(e){ if(inp) inp.select(); toast("Select it and copy"); } };
+      const cp=$("#tmpCopy"); if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(r.tempPassword); toast("Скопійовано ✓"); }catch(e){ if(inp) inp.select(); toast("Виділіть і скопіюйте"); } };
     }catch(err){ toast("⚠️ "+err.message); }
   }
 
-  function renderProfile(){
-    const p=state.me; if(!p) return;
-    $("#profName").textContent=p.name;
-    $("#profAv").textContent=(p.emojis||[]).slice(0,3).join("")||"🧹";
-    $("#profStreak").textContent=p.streakDays;
-    $("#profStreakWrap").style.display=p.showStreak?"":"none";
-    const sc=$("#profShift"); if(sc){ const night=p.shift==="night"; sc.className="shift-chip "+(night?"night":"day"); sc.textContent=night?"🌙 Night":"☀️ Day"; sc.hidden=false; }
-  }
-
-  /* ---------- dust layer ---------- */
-  const dustLayer=$("#dustLayer"); let bunnies=[], dustRAF=null, t0=performance.now();
-  function openDustTotal(){ const seen=new Set(); let s=0; for(const t of [...state.columns.flatMap(c=>c.tasks),...(state.recurring||[])]){ if(seen.has(t.id))continue; seen.add(t.id); if(!t.done) s+=t.dust; } return s; }
-  const vomitLayer=$("#vomitLayer");
-  // messy top surface of the rising bile (lumpy crest + chunks + splatter above the waterline)
-  function buildSurf(){
-    const W=1200,H=96,wl=56,rnd=(a,b)=>a+Math.random()*(b-a),i=n=>n|0,P=[];
-    P.push(`<defs><linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7c02f"/><stop offset="1" stop-color="#7c951a"/></linearGradient></defs>`);
-    let d=`M0 ${H} L0 ${wl}`,x=0;
-    while(x<W){ const nx=Math.min(W,x+rnd(42,82)); d+=` Q ${i((x+nx)/2)} ${i(wl-rnd(-4,24))} ${i(nx)} ${i(wl-rnd(-4,6))}`; x=nx; }
-    P.push(`<path d="${d} L${W} ${H} Z" fill="url(#vs)"/>`);
-    for(let k=0;k<16;k++){ const r=rnd(7,18); P.push(`<ellipse cx="${i(rnd(20,W-20))}" cy="${i(wl+rnd(-6,6))}" rx="${i(r)}" ry="${i(r*0.72)}" fill="url(#vs)"/>`); }
-    for(let k=0;k<6;k++) P.push(`<ellipse cx="${i(rnd(40,W-40))}" cy="${i(wl+rnd(2,12))}" rx="${i(rnd(10,26))}" ry="${i(rnd(3,6))}" fill="#cfe463" opacity="0.4"/>`);
-    const cc=['#d98a2e','#a85f20','#e6c25c','#c6922f'];
-    for(let k=0;k<12;k++) P.push(`<circle cx="${i(rnd(30,W-30))}" cy="${i(wl+rnd(8,32))}" r="${i(rnd(3,8))}" fill="${cc[i(Math.random()*cc.length)]}"/>`);
-    for(let k=0;k<8;k++){ const cx=i(rnd(30,W-30)),cy=i(wl+rnd(4,24)),r=i(rnd(3,6)); P.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#b4cb43"/><circle cx="${i(cx-r*0.3)}" cy="${i(cy-r*0.3)}" r="${Math.max(1,i(r*0.4))}" fill="#dcec85"/>`); }
-    for(let k=0;k<22;k++){ const up=rnd(2,wl-2),cy=wl-up,r=Math.max(1.3,rnd(2,6)*(1-up/wl)); P.push(`<ellipse cx="${i(rnd(10,W-10))}" cy="${i(cy)}" rx="${i(r)}" ry="${i(r*rnd(1,1.6))}" fill="#86a01d"/>`); }
-    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${P.join('')}</svg>`;
-  }
-  function ensureVomit(){ if(vomitLayer && !vomitLayer.firstChild){ vomitLayer.innerHTML=`<div class="vomit-body" id="vomitBody"></div><div class="vomit-surf" id="vomitSurf">${buildSurf()}</div>`; } }
-  // rising flood: more Ugh over 50 → the bile climbs higher up the screen
-  function sizeVomit(total){
-    const vh=window.innerHeight||700, over=Math.max(0,total-50);
-    const h=Math.min(vh*0.92, over>0?40+over*0.0065*vh:0);
-    const body=document.getElementById("vomitBody"), surf=document.getElementById("vomitSurf");
-    if(body) body.style.height=h+"px";
-    if(surf) surf.style.bottom=Math.max(0,h-22)+"px";
-  }
-  window.addEventListener("resize",()=>{ if(vomitLayer&&vomitLayer.classList.contains("on")) sizeVomit(openDustTotal()); });
-  function syncDust(){
-    const total=openDustTotal();
-    $("#dustCount").innerHTML=`<b>${total}</b> 🤢 Ugh to clear`;
-    if(vomitLayer){ ensureVomit(); vomitLayer.classList.toggle("on", total>50); sizeVomit(total); }
-    const want=Math.min(42,Math.ceil(total/2));
-    while(bunnies.length<want){ const b=document.createElement("div"); b.className="dustbunny";
-      b.textContent='🤢';
-      b.dataset.x=Math.random()*100; b.dataset.sp=(0.4+Math.random()*0.7)*(Math.random()<.5?-1:1);
-      b.dataset.ph=Math.random()*Math.PI*2; b.dataset.sc=0.7+Math.random()*0.8;
-      b.style.opacity=0.55+Math.random()*0.4; dustLayer.appendChild(b); bunnies.push(b); }
-    while(bunnies.length>want){ const b=bunnies.pop(); b.remove(); }
-  }
-  function startDust(){ if(dustRAF) return; buildMascot(); t0=performance.now(); dustRAF=requestAnimationFrame(animDust); }
-  function animDust(now){
-    const w=window.innerWidth||800, dt=Math.min(50,now-t0); t0=now;
-    for(const b of bunnies){
-      let x=parseFloat(b.dataset.x)+parseFloat(b.dataset.sp)*dt*0.004;
-      if(x>104)x=-4; if(x<-4)x=104; b.dataset.x=x;
-      const ph=parseFloat(b.dataset.ph)+dt*0.003; b.dataset.ph=ph;
-      b.style.transform=`translate(${x/100*w}px, ${Math.sin(ph)*7}px) scale(${b.dataset.sc})`;
-    }
-    updateMascot(dt, w);
-    dustRAF=requestAnimationFrame(animDust);
-  }
-
-  /* ---------- Sweepy the duck (mascot) ---------- */
-  const DUCK_SVG=`<div class="say"></div><div class="duck-flip"><svg class="duck" viewBox="0 0 92 72" xmlns="http://www.w3.org/2000/svg">
-    <line x1="36" y1="55" x2="33" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
-    <line x1="46" y1="55" x2="49" y2="66" stroke="#F7941D" stroke-width="3" stroke-linecap="round"/>
-    <path d="M20 37 L7 32 L19 47 Z" fill="#FFD54A"/>
-    <ellipse cx="40" cy="42" rx="23" ry="16" fill="#FFD54A"/>
-    <ellipse cx="37" cy="45" rx="12" ry="8" fill="#F2C236"/>
-    <circle cx="62" cy="26" r="12.5" fill="#FFD54A"/>
-    <path d="M72 22.5 L86 27 L72 31.5 Z" fill="#F7941D"/>
-    <circle cx="65" cy="23" r="2.6" fill="#15293f"/><circle cx="66" cy="22.1" r="0.9" fill="#fff"/>
-    <g class="broom">
-      <line x1="58" y1="40" x2="81" y2="63" stroke="#9c6b3f" stroke-width="3.4" stroke-linecap="round"/>
-      <path d="M74 60 L88 60 L85 71 L77 71 Z" fill="#E7B24A"/>
-      <line x1="79" y1="61.5" x2="79" y2="70" stroke="#b98a30" stroke-width="1"/>
-      <line x1="83" y1="61.5" x2="83" y2="70" stroke="#b98a30" stroke-width="1"/>
-      <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="-9 58 40;15 58 40;-9 58 40" dur="1.2s" repeatCount="indefinite"/>
-    </g>
-  </svg></div>`;
-  let mascotX=14, mascotDir=1, mascotEl=null, idleSaid=false, everDusty=false, dashTarget=null;
-  function buildMascot(){
-    if(mascotEl) return;
-    mascotEl=document.createElement("div");
-    mascotEl.id="mascot"; mascotEl.className="mascot"; mascotEl.setAttribute("aria-hidden","true");
-    mascotEl.innerHTML=DUCK_SVG;
-    document.body.appendChild(mascotEl);
-  }
-  function updateMascot(dt,w){
-    if(!mascotEl) return;
-    const duckW=92, maxX=Math.max(14,(w||window.innerWidth||800)-duckW-8);
-    if(dashTarget!=null){                    // scurrying to a just-finished task's dust
-      const diff=dashTarget-mascotX;
-      mascotDir=diff<0?-1:1;
-      const step=Math.sign(diff)*Math.min(Math.abs(diff), dt*0.22);
-      mascotX+=step;
-      if(Math.abs(dashTarget-mascotX)<6) dashTarget=null;
-    } else {
-      const clean=openDustTotal()===0;
-      const speed=clean?0.015:0.04;          // slows down when there's nothing to sweep
-      mascotX += mascotDir*dt*speed;
-      if(mascotX>maxX){ mascotX=maxX; mascotDir=-1; }
-      if(mascotX<14){ mascotX=14; mascotDir=1; }
-      if(!clean){ everDusty=true; idleSaid=false; }
-      if(clean && everDusty && !idleSaid){ idleSaid=true; mascotSay("Spotless! ✨"); }
-    }
-    mascotX=Math.max(14,Math.min(maxX,mascotX));
-    mascotEl.style.transform=`translateX(${mascotX}px)`;
-    mascotEl.classList.toggle("flip", mascotDir<0);
-  }
-  // Called when a task is completed: Sweepy scurries to the nearest dust bunny and sweeps it up.
-  function sweepCelebrate(){
-    if(!mascotEl) return;
-    const w=window.innerWidth||800;
-    if(bunnies.length){
-      let bestX=null,bestD=1e9;
-      for(const b of bunnies){ const bx=parseFloat(b.dataset.x)/100*w; const d=Math.abs(bx-mascotX); if(d<bestD){ bestD=d; bestX=bx; } }
-      if(bestX!=null) dashTarget=Math.max(14,Math.min(w-100,bestX-26));
-    }
-    setTimeout(sweepBurst,430);
-    mascotEl.classList.add("scrub"); setTimeout(()=>mascotEl.classList.remove("scrub"),650);
-  }
-  function sweepBurst(){
-    const originX=mascotX+46, originY=(window.innerHeight||600)-54;
-    ["✨","✨","✨","💨","💨","🫧"].forEach((em,i)=>{
-      const el=document.createElement("div"); el.className="sweep-fx"; el.textContent=em;
-      el.style.left=originX+"px"; el.style.top=originY+"px";
-      el.style.setProperty("--dx",((Math.random()-0.5)*130).toFixed(0)+"px");
-      el.style.setProperty("--dy",(-28-Math.random()*62).toFixed(0)+"px");
-      el.style.animation=`sweeppop ${(0.7+Math.random()*0.5).toFixed(2)}s ease-out forwards`;
-      el.style.animationDelay=(i*0.04)+"s";
-      document.body.appendChild(el); setTimeout(()=>el.remove(),1500);
-    });
-  }
-  let sayT=null;
-  function mascotSay(text){
-    const s=mascotEl&&mascotEl.querySelector(".say"); if(!s) return;
-    s.textContent=text; s.classList.add("show");
-    clearTimeout(sayT); sayT=setTimeout(()=>s.classList.remove("show"),2200);
-  }
-  const SWEEP_LINES=["Swept! 🧹","Nice one!","One less mess!","Quack-tastic!","Tidy!","On a roll!"];
-
-  /* ---------- overlays + toast ---------- */
+  /* ---------- sheet + toast + SSE ---------- */
   const scrim=$("#scrim");
   function openSheet(html){ scrim.innerHTML=html; scrim.hidden=false; document.body.style.overflow="hidden";
     scrim.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet); }
   function closeSheet(){ scrim.hidden=true; scrim.innerHTML=""; document.body.style.overflow=""; }
-  scrim.addEventListener("mousedown",e=>{ if(e.target===scrim) closeSheet(); });
-  document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!scrim.hidden) closeSheet(); });
+  scrim.addEventListener("mousedown", e=>{ if(e.target===scrim) closeSheet(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape"&&!scrim.hidden) closeSheet(); });
 
   let toastT=null;
-  function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),2800); }
+  function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),2600); }
+
+  let es=null;
+  function openSSE(){ teardownSSE(); try{ es=new EventSource("/api/events"); es.onmessage=()=>loadBoard(); es.onerror=()=>{}; }catch(e){} }
+  function teardownSSE(){ if(es){ try{es.close();}catch(e){} es=null; } }
 
   boot();
 })();

@@ -1,7 +1,7 @@
 {
-  "name": "aneon",
-  "version": "1.0.0",
-  "description": "ANEON — gamified internal team tracker, multi-user and self-hosted (Node + SQLite).",
+  "name": "aneon-tenders",
+  "version": "2.0.0",
+  "description": "ANEON — CRM для обліку тендерів: багатокористувацький, самохостинг (Node + SQLite).",
   "license": "MIT",
   "type": "commonjs",
   "main": "server.js",

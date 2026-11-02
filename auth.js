@@ -45,19 +45,7 @@ function destroySession(token) {
 /** Public shape of a user — never leak password hash/salt. */
 function publicUser(u) {
   if (!u) return null;
-  return {
-    id: u.id,
-    email: u.email,
-    name: u.name,
-    status: u.status || "",
-    shift: u.shift || "day",
-    emojis: safeJson(u.emojis, ["🧹"]),
-    showStreak: !!u.show_streak,
-    paused: !!u.paused,
-    streakDays: u.streak_days || 0,
-    lastClose: u.last_close || "",
-    stats: safeJson(u.stats, { closed: 0, sweptDust: 0, early: false, night: false, deepClean: false })
-  };
+  return { id: u.id, email: u.email, name: u.name };
 }
 
 function safeJson(s, fallback) {
