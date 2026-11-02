@@ -1,13 +1,14 @@
 "use strict";
 /**
- * SQLite-сховище для CRM обліку тендерів.
- * Один спільний робочий простір: усі, хто зареєструвався, бачать ту саму дошку.
+ * SQLite-сховище для CRM супроводу виграних тендерів.
+ * Один спільний простір: усі зареєстровані бачать ті самі договори.
  */
 const Database = require("better-sqlite3");
 const crypto = require("crypto");
 const path = require("path");
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "data.db");
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "uploads");
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
@@ -33,81 +34,159 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS stages (
-    id       TEXT PRIMARY KEY,
-    name     TEXT NOT NULL,
-    position INTEGER NOT NULL
+  /* 1. Картка виграного тендера / договору */
+  CREATE TABLE IF NOT EXISTS contracts (
+    id              TEXT PRIMARY KEY,
+    tender_no       TEXT DEFAULT '',
+    contract_no     TEXT DEFAULT '',
+    buyer           TEXT DEFAULT '',
+    edrpou          TEXT DEFAULT '',
+    contact_person  TEXT DEFAULT '',
+    phone           TEXT DEFAULT '',
+    email           TEXT DEFAULT '',
+    manager_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+    win_date        TEXT DEFAULT '',
+    sign_date       TEXT DEFAULT '',
+    total_sum       REAL DEFAULT 0,
+    valid_until     TEXT DEFAULT '',
+    total_volume    TEXT DEFAULT '',
+    delivery_terms  TEXT DEFAULT '',
+    payment_terms   TEXT DEFAULT '',
+    delivery_addr   TEXT DEFAULT '',
+    tender_url      TEXT DEFAULT '',
+    status          TEXT DEFAULT 'active',   -- active | closed
+    notes           TEXT DEFAULT '',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS tenders (
-    id               TEXT PRIMARY KEY,
-    stage_id         TEXT NOT NULL REFERENCES stages(id) ON DELETE CASCADE,
-    buyer            TEXT DEFAULT '',   -- Найменування покупця
-    product          TEXT DEFAULT '',   -- Найменування товару
-    packaging        TEXT DEFAULT '',   -- Пакування
-    delivery_terms   TEXT DEFAULT '',   -- Строки поставки
-    specification    TEXT DEFAULT '',   -- Специфікація
-    req_sample       TEXT DEFAULT '',   -- Реквізити для відправки зразка
-    req_order        TEXT DEFAULT '',   -- Реквізити для відправки замовлення
-    req_docs         TEXT DEFAULT '',   -- Реквізити для відправки документів
-    contract_exists  INTEGER DEFAULT 0, -- Договір є / немає
-    contract_signed  INTEGER DEFAULT 0, -- підписаний / не підписаний
-    notes            TEXT DEFAULT '',
-    position         INTEGER NOT NULL,
-    created_at       TEXT NOT NULL,
-    updated_at       TEXT NOT NULL
+  /* 2. Зразки продукції */
+  CREATE TABLE IF NOT EXISTS samples (
+    id            TEXT PRIMARY KEY,
+    contract_id   TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    description   TEXT DEFAULT '',
+    qty           TEXT DEFAULT '',
+    specs         TEXT DEFAULT '',
+    due_date      TEXT DEFAULT '',
+    sent_date     TEXT DEFAULT '',
+    ttn           TEXT DEFAULT '',
+    sender_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    controller_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    received      INTEGER DEFAULT 0,
+    quality_ok    INTEGER DEFAULT 0,
+    remarks       TEXT DEFAULT '',
+    resend        INTEGER DEFAULT 0,
+    created_at    TEXT NOT NULL
+  );
+
+  /* 3. Виробництво */
+  CREATE TABLE IF NOT EXISTS production (
+    id            TEXT PRIMARY KEY,
+    contract_id   TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    product       TEXT DEFAULT '',
+    specification TEXT DEFAULT '',
+    dims          TEXT DEFAULT '',   -- товщина / ширина / довжина
+    color_print   TEXT DEFAULT '',
+    planned_qty   TEXT DEFAULT '',
+    contract_qty  TEXT DEFAULT '',
+    produced_qty  TEXT DEFAULT '',
+    qc_qty        TEXT DEFAULT '',
+    defect_qty    TEXT DEFAULT '',
+    start_date    TEXT DEFAULT '',
+    planned_ready TEXT DEFAULT '',
+    actual_ready  TEXT DEFAULT '',
+    responsible_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL
+  );
+
+  /* 4. Відвантаження (журнал) */
+  CREATE TABLE IF NOT EXISTS shipments (
+    id             TEXT PRIMARY KEY,
+    contract_id    TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    num            TEXT DEFAULT '',
+    planned_date   TEXT DEFAULT '',
+    actual_date    TEXT DEFAULT '',
+    nomenclature   TEXT DEFAULT '',
+    qty            REAL DEFAULT 0,
+    unit           TEXT DEFAULT 'кг',
+    carrier        TEXT DEFAULT '',
+    ttn            TEXT DEFAULT '',
+    address        TEXT DEFAULT '',
+    received       INTEGER DEFAULT 0,
+    docs_signed    INTEGER DEFAULT 0,
+    delay_reason   TEXT DEFAULT '',
+    responsible_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL
+  );
+
+  /* 5. Документи (чек-лист) */
+  CREATE TABLE IF NOT EXISTS documents (
+    id             TEXT PRIMARY KEY,
+    contract_id    TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    kind           TEXT DEFAULT '',   -- тип документа
+    form_date      TEXT DEFAULT '',
+    send_date      TEXT DEFAULT '',
+    recv_date      TEXT DEFAULT '',
+    status         TEXT DEFAULT 'todo', -- todo | ready | sent | received | registered | signed
+    responsible_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL
+  );
+
+  /* 6. Оплати (кілька записів, якщо частинами) */
+  CREATE TABLE IF NOT EXISTS payments (
+    id             TEXT PRIMARY KEY,
+    contract_id    TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    kind           TEXT DEFAULT 'payment', -- prepay | payment
+    invoice_date   TEXT DEFAULT '',
+    planned_date   TEXT DEFAULT '',
+    actual_date    TEXT DEFAULT '',
+    amount         REAL DEFAULT 0,
+    responsible_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL
+  );
+
+  /* Файли (скани, ТТН, фото) */
+  CREATE TABLE IF NOT EXISTS attachments (
+    id          TEXT PRIMARY KEY,
+    contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    scope       TEXT DEFAULT 'contract',
+    name        TEXT DEFAULT '',
+    mime        TEXT DEFAULT '',
+    size        INTEGER DEFAULT 0,
+    file        TEXT NOT NULL,       -- ім'я файлу в UPLOAD_DIR
+    uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL
   );
 `);
 
-/* ---------- перший запуск: стадії за замовчуванням + приклади ---------- */
+/* ---------- перший запуск: приклад договору ---------- */
 function seedIfEmpty() {
-  const n = db.prepare("SELECT COUNT(*) c FROM stages").get().c;
+  const n = db.prepare("SELECT COUNT(*) c FROM contracts").get().c;
   if (n > 0) return;
-  const insStage = db.prepare("INSERT INTO stages (id,name,position) VALUES (?,?,?)");
-  const insTender = db.prepare(`INSERT INTO tenders
-    (id,stage_id,buyer,product,packaging,delivery_terms,specification,req_sample,req_order,req_docs,contract_exists,contract_signed,notes,position,created_at,updated_at)
-    VALUES (@id,@stage_id,@buyer,@product,@packaging,@delivery_terms,@specification,@req_sample,@req_order,@req_docs,@contract_exists,@contract_signed,@notes,@position,@now,@now)`);
   const now = new Date().toISOString();
-
-  const stages = [
-    ["Новий запит", [
-      { buyer: "КП «Міська лікарня №4»", product: "Рукавички нітрилові, розмір M", packaging: "100 шт/упаковка, 10 уп/коробка",
-        delivery_terms: "до 15 днів після підписання", specification: "ДСТУ, нітрил, без пудри",
-        req_sample: "", req_order: "", req_docs: "", contract_exists: 0, contract_signed: 0 }
-    ]],
-    ["Зразок надіслано", [
-      { buyer: "ТОВ «АгроПостач»", product: "Мішки поліпропіленові 50 кг", packaging: "по 500 шт у кіпі",
-        delivery_terms: "20 днів", specification: "біла тканина, 70 г/м²",
-        req_sample: "Нова Пошта, відділення №3, Київ, отримувач — Іваненко І.І., +380XXXXXXXXX",
-        req_order: "", req_docs: "", contract_exists: 0, contract_signed: 0 }
-    ]],
-    ["Договір", [
-      { buyer: "Departament освіти м. Львів", product: "Папір офісний А4, 80 г/м²", packaging: "500 арк/пачка, 5 пачок/коробка",
-        delivery_terms: "по графіку, партіями до 30.12", specification: "клас C, білизна 146%",
-        req_sample: "надіслано", req_order: "самовивіз зі складу, Львів, вул. Промислова 12",
-        req_docs: "Оригінали — на юр. адресу, копії — email buh@dep.lviv.ua",
-        contract_exists: 1, contract_signed: 0, notes: "Чекаємо підпис з боку замовника" }
-    ]],
-    ["Поставка", []],
-    ["Завершено", []]
-  ];
-
-  const seed = db.transaction(() => {
-    stages.forEach(([name, items], si) => {
-      const sid = uid();
-      insStage.run(sid, name, si);
-      items.forEach((t, ti) => insTender.run({
-        id: uid(), stage_id: sid,
-        buyer: t.buyer || "", product: t.product || "", packaging: t.packaging || "",
-        delivery_terms: t.delivery_terms || "", specification: t.specification || "",
-        req_sample: t.req_sample || "", req_order: t.req_order || "", req_docs: t.req_docs || "",
-        contract_exists: t.contract_exists ? 1 : 0, contract_signed: t.contract_signed ? 1 : 0,
-        notes: t.notes || "", position: ti, now
-      }));
+  const T = todayKey();
+  const cid = uid();
+  db.prepare(`INSERT INTO contracts
+    (id,tender_no,contract_no,buyer,edrpou,contact_person,phone,email,win_date,sign_date,total_sum,valid_until,total_volume,delivery_terms,payment_terms,delivery_addr,tender_url,status,notes,created_at,updated_at)
+    VALUES (@id,@tender_no,@contract_no,@buyer,@edrpou,@contact_person,@phone,@email,@win_date,@sign_date,@total_sum,@valid_until,@total_volume,@delivery_terms,@payment_terms,@delivery_addr,@tender_url,'active','',@now,@now)`)
+    .run({
+      id: cid, tender_no: "UA-2026-001234", contract_no: "Д-57", buyer: "КП «Міська лікарня №4»",
+      edrpou: "01234567", contact_person: "Петренко О.І.", phone: "+380 67 123 45 67", email: "zakupivli@lik4.ua",
+      win_date: addDays(T, -10), sign_date: addDays(T, -5), total_sum: 480000, valid_until: addDays(T, 60),
+      total_volume: "20 000 пар", delivery_terms: "партіями, до 30 днів", payment_terms: "відстрочка 14 днів",
+      delivery_addr: "м. Київ, вул. Лікарняна, 4, склад", tender_url: "https://prozorro.gov.ua/tender/...", now
     });
-  });
-  seed();
+  db.prepare(`INSERT INTO samples (id,contract_id,description,qty,specs,due_date,created_at)
+    VALUES (?,?,?,?,?,?,?)`)
+    .run(uid(), cid, "Рукавички нітрилові, розмір M", "5 пар", "ДСТУ, без пудри", addDays(T, 2), now);
+  db.prepare(`INSERT INTO shipments (id,contract_id,num,planned_date,nomenclature,qty,unit,address,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(uid(), cid, "1", addDays(T, 7), "Рукавички нітрилові M", 5000, "пар", "м. Київ, вул. Лікарняна, 4", now);
+  db.prepare(`INSERT INTO documents (id,contract_id,kind,status,created_at) VALUES (?,?,?,?,?)`)
+    .run(uid(), cid, "Договір", "signed", now);
+  db.prepare(`INSERT INTO payments (id,contract_id,kind,planned_date,amount,created_at) VALUES (?,?,?,?,?,?)`)
+    .run(uid(), cid, "payment", addDays(T, 21), 480000, now);
 }
 seedIfEmpty();
 
-module.exports = { db, uid, todayKey, addDays, DB_PATH };
+module.exports = { db, uid, todayKey, addDays, DB_PATH, UPLOAD_DIR };
