@@ -129,14 +129,30 @@
   .badge.amber{color:var(--warn);border-color:#4a3c1c;background:var(--warn-soft)}
 
   /* ---- contracts list ---- */
-  .clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
-  .ccard{background:var(--panel);border:1px solid var(--line);border-left-width:3px;border-radius:var(--radius);padding:16px 17px;cursor:pointer;transition:border-color .15s,transform .12s}
-  .ccard:hover{border-color:var(--line-2);transform:translateY(-1px)}
-  .ccard.warn{border-left-color:var(--warn)} .ccard.good{border-left-color:var(--good)}
-  .ccard .buyer{font-weight:800;font-size:15.5px}
-  .ccard .nos{color:var(--muted-2);font-size:12px;margin-top:2px}
-  .ccard .rowm{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
-  .ccard .st{font-size:13px;color:var(--muted);display:flex;justify-content:space-between;margin-top:11px;gap:10px}
+  .clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+  .ccard{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:18px;
+         padding:17px 18px;cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
+  .ccard:hover{transform:translateY(-2px);border-color:var(--line-2);box-shadow:0 20px 36px -24px rgba(0,0,0,.85)}
+  .cc-top{display:flex;align-items:center;gap:12px}
+  .cc-av{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff;
+         box-shadow:0 8px 16px -9px rgba(0,0,0,.7)}
+  .cc-id{flex:1;min-width:0;display:flex;flex-direction:column}
+  .cc-buyer{font-weight:800;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc-nos{color:var(--muted-2);font-size:12px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc-chip{font-size:11px;font-weight:700;padding:4px 11px;border-radius:999px;white-space:nowrap}
+  .cc-chip.ac{color:var(--teal);background:#0e2a27;border:1px solid #1d4a44}
+  .cc-chip.cl{color:var(--muted-2);background:#16171e;border:1px solid var(--line)}
+  .cc-bar{height:7px;border-radius:999px;background:#222531;margin:15px 0 7px;overflow:hidden}
+  .cc-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--good),#86e3ab)}
+  .cc-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .cc-meta .cc-debt{color:var(--warn);font-weight:700} .cc-meta .cc-ok{color:var(--good);font-weight:700}
+  .cc-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+  .cc-mgr{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);min-width:0}
+  .cc-mgr span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+  .cc-sum{font-weight:800;font-size:17px;white-space:nowrap}
+  .cc-tasks{display:inline-block;margin-top:11px;font-size:12px;color:var(--warn);font-weight:600}
+  .cc-tasks.ok{color:var(--good)}
 
   /* ---- detail ---- */
   .detail-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
@@ -262,6 +278,8 @@
 
   const state={ me:null, users:[], adminId:null, view:"dashboard", detailId:null, detailTab:"main", logo:null, dashResp:"", dashOverdue:false };
   const daysLate=due=>{ if(!due) return 0; return Math.max(0,Math.floor((Date.now()-new Date(due+"T00:00:00"))/86400000)); };
+  const AV_PAL=["#e8842e","#2bb6a6","#5c7cff","#e05d8f","#45c586","#b57cf0","#eab54a","#ef6b5b","#3bb0c4"];
+  const avColor=n=>AV_PAL[([...String(n||"?")].reduce((a,c)=>a+c.charCodeAt(0),0))%AV_PAL.length];
 
   /* ---------- clock ---------- */
   function tickClock(){
@@ -398,14 +416,21 @@
   function renderContracts(d){
     refreshTop(d.me); state.users=d.users; state.adminId=d.adminId;
     const cards=d.contracts.map(c=>{
-      const debt=c.debt>0?`<span class="badge amber">Борг: ${money(c.debt)}</span>`:`<span class="badge" style="color:var(--good);border-color:#1c4631">Оплачено</span>`;
-      const tasks=c.openTasks?`<span class="badge">${c.openTasks} задач</span>`:`<span class="badge" style="color:var(--good)">закрито</span>`;
-      const closed=c.status==="closed"?`<span class="badge">завершено</span>`:"";
-      return `<div class="ccard ${c.debt>0?"warn":"good"}" data-open="${c.id}">
-        <div class="buyer">${esc(c.buyer)||"<span class='mut2'>Без назви</span>"}</div>
-        <div class="nos">${c.tenderNo?"Тендер "+esc(c.tenderNo):""}${c.contractNo?" · Договір "+esc(c.contractNo):""}</div>
-        <div class="rowm">${debt} ${tasks} ${closed}</div>
-        <div class="st"><span class="mut2">${c.managerName?"Менеджер: "+esc(c.managerName):"&nbsp;"}</span><b>${money(c.totalSum)}</b></div>
+      const prog=c.totalSum>0?Math.min(100,Math.round((c.paid/c.totalSum)*100)):0;
+      const nos=[c.tenderNo?"№ "+esc(c.tenderNo):"",c.contractNo?"Договір "+esc(c.contractNo):""].filter(Boolean).join(" · ")||"&nbsp;";
+      return `<div class="ccard" data-open="${c.id}">
+        <div class="cc-top">
+          <span class="cc-av" style="background:${avColor(c.buyer)}">${esc(initials(c.buyer||"?"))}</span>
+          <span class="cc-id"><span class="cc-buyer">${esc(c.buyer)||"Без назви"}</span><span class="cc-nos">${nos}</span></span>
+          <span class="cc-chip ${c.status==="closed"?"cl":"ac"}">${c.status==="closed"?"Завершено":"В роботі"}</span>
+        </div>
+        <div class="cc-bar"><i style="width:${prog}%"></i></div>
+        <div class="cc-meta"><span>Оплачено ${prog}%</span>${c.debt>0?`<span class="cc-debt">борг ${money(c.debt)}</span>`:`<span class="cc-ok">оплачено повністю</span>`}</div>
+        <div class="cc-foot">
+          <span class="cc-mgr">${c.managerName?`<span class="cc-dot"></span><span class="n">${esc(c.managerName)}</span>`:"<span class='mut2'>без менеджера</span>"}</span>
+          <span class="cc-sum">${money(c.totalSum)}</span>
+        </div>
+        ${c.openTasks?`<span class="cc-tasks">● ${c.openTasks} відкритих задач</span>`:`<span class="cc-tasks ok">✓ усі задачі закрито</span>`}
       </div>`;
     }).join("");
     $("#view").innerHTML=`
