@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ANEON — супровід тендерів</title>
+<title>Пласт Інвест — супровід тендерів</title>
 <style>
   :root{
     --bg:#0a0f1a; --panel:#0f1727; --panel-2:#13203a; --card:#14223c; --card-2:#17284a;
@@ -169,7 +169,7 @@
 <!-- AUTH -->
 <div class="auth" id="authScreen" hidden>
   <div class="auth-card">
-    <div class="logo"><div class="slot">AT</div><div><b>ANEON</b><span>Супровід тендерів</span></div></div>
+    <div class="logo"><div class="slot" style="padding:0;overflow:hidden"><img src="/logo.png" alt="" style="width:100%;height:100%;object-fit:cover"></div><div><b>Пласт Інвест</b><span>Супровід тендерів</span></div></div>
     <h1 id="authTitle">З поверненням</h1>
     <p class="sub" id="authSub">Увійдіть, щоб відкрити свої договори.</p>
     <div class="err" id="authErr" hidden></div>
@@ -190,8 +190,8 @@
 <div id="app" hidden>
   <div class="topbar"><div class="topbar-in">
     <div class="logo-slot">
-      <div class="logo-box" id="logoBox" title="Натисніть, щоб завантажити логотип"><b>AT</b><span class="hintup">Лого</span></div>
-      <div class="appname"><b>ANEON</b><span>Супровід тендерів</span></div>
+      <div class="logo-box" id="logoBox" title="Натисніть, щоб змінити логотип"><img src="/logo.png" alt=""><span class="hintup">Змінити</span></div>
+      <div class="appname"><b>Пласт Інвест</b><span>Супровід тендерів</span></div>
     </div>
     <div class="nav" id="nav">
       <button data-view="dashboard" class="on">Панель</button>
@@ -271,7 +271,7 @@
   /* ---------- logo (per-device) ---------- */
   function loadLogo(){ try{ const d=localStorage.getItem("aneon-logo"); if(d){ state.logo=d; paintLogo(); } }catch(e){} }
   function paintLogo(){ const box=$("#logoBox"); if(!box) return;
-    box.innerHTML=state.logo?`<img src="${state.logo}"><span class="hintup">Змінити</span>`:`<b>AT</b><span class="hintup">Лого</span>`; }
+    box.innerHTML=`<img src="${state.logo||'/logo.png'}" alt=""><span class="hintup">Змінити</span>`; }
   $("#logoBox").onclick=()=>$("#logoInput").click();
   $("#logoInput").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
     rd.onload=()=>{ state.logo=rd.result; try{localStorage.setItem("aneon-logo",rd.result);}catch(x){} paintLogo(); toast("Логотип збережено (на цьому пристрої)"); };
